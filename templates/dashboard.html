@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LVMH · Grey Market Intelligence</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── DESIGN SYSTEM ─────────────────────────────────────────────── */
+    :root {
+      --bg-deep:       #06090f;
+      --bg-card:       #0c111c;
+      --bg-card-hover: #111929;
+      --bg-header:     #080d16;
+      --border:        rgba(255, 255, 255, 0.055);
+      --border-accent: rgba(201, 168, 76, 0.25);
+
+      --gold:          #c9a84c;
+      --gold-light:    #e2c272;
+      --gold-dim:      rgba(201, 168, 76, 0.15);
+      --red:           #e05656;
+      --red-dim:       rgba(224, 86, 86, 0.15);
+      --amber:         #f0922b;
+      --amber-dim:     rgba(240, 146, 43, 0.15);
+      --green:         #2ec887;
+      --green-dim:     rgba(46, 200, 135, 0.12);
+      --blue:          #4a90d9;
+      --blue-dim:      rgba(74, 144, 217, 0.12);
+
+      --text-primary:  #e8e4da;
+      --text-secondary:#8a8c96;
+      --text-muted:    #525561;
+      --text-gold:     var(--gold);
+
+      --font-display:  'Playfair Display', serif;
+      --font-mono:     'DM Mono', monospace;
+      --font-body:     'Plus Jakarta Sans', sans-serif;
+
+      --radius-sm:     6px;
+      --radius-md:     10px;
+      --radius-lg:     16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ─────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────────────────────── */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--bg-header);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-brand {
+      padding: 24px 24px 20px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .sidebar-brand::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 24px; right: 24px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      opacity: 0.4;
+    }
+
+    .brand-mark {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 8.5px;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-top: 5px;
+      opacity: 0.85;
+    }
+
+    .sidebar-nav {
+      padding: 16px 0;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 24px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 24px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: all 0.15s;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.03);
+      border-left-color: rgba(201,168,76,0.2);
+    }
+
+    .nav-item.active {
+      color: var(--gold-light);
+      border-left-color: var(--gold);
+      background: linear-gradient(90deg, rgba(201,168,76,0.12) 0%, transparent 100%);
+    }
+
+    .nav-icon { font-size: 14px; opacity: 0.8; }
+
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── MAIN CONTENT ─────────────────────────────────────────────── */
+    .main {
+      margin-left: 240px;
+      flex: 0 0 calc(100vw - 240px);
+      width: calc(100vw - 240px);
+      min-height: 100vh;
+      min-width: 0;
+      overflow-x: hidden;
+      max-width: calc(100vw - 240px);
+    }
+
+    /* ── TOP BAR ──────────────────────────────────────────────────── */
+    .topbar {
+      height: 60px;
+      background: linear-gradient(90deg, #080d18 0%, #09101e 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      position: sticky; top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+
+    .topbar-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: 0.03em;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(201, 168, 76, 0.12);
+      border: 1px solid rgba(201, 168, 76, 0.35);
+      color: var(--gold);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 0 0 rgba(201,168,76,0);
+    }
+
+    .scan-btn:hover {
+      background: rgba(201, 168, 76, 0.22);
+      color: var(--gold-light);
+      border-color: rgba(201, 168, 76, 0.6);
+      box-shadow: 0 0 16px rgba(201,168,76,0.15);
+    }
+
+    .scan-btn.scanning {
+      animation: scan-pulse 0.7s ease-in-out infinite alternate;
+      border-color: var(--gold);
+    }
+
+    @keyframes scan-pulse {
+      from { opacity: 0.55; box-shadow: 0 0 4px rgba(201,168,76,0.2); }
+      to   { opacity: 1;    box-shadow: 0 0 18px rgba(201,168,76,0.4); }
+    }
+
+    /* ── LAST SCANNED META ─────────────────────────────────────────── */
+    .scan-meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-align: right;
+      line-height: 1.5;
+    }
+    .scan-meta .scan-live-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      margin-right: 4px;
+      animation: pulse-dot 2s ease-in-out infinite;
+      vertical-align: middle;
+    }
+
+    /* ── DIS GAUGE STRIP ───────────────────────────────────────────── */
+    .dis-strip {
+      background: linear-gradient(135deg, #0a1020 0%, #0c1422 100%);
+      border-bottom: 1px solid rgba(201, 168, 76, 0.18);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      position: relative;
+    }
+    .dis-strip::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.3) 30%, rgba(201,168,76,0.3) 70%, transparent 100%);
+    }
+
+    .dis-label-block { flex-shrink: 0; }
+    .dis-title {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .dis-band {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .dis-score-block {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .dis-number {
+      font-family: var(--font-mono);
+      font-size: 38px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .dis-delta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .dis-delta.up   { background: var(--red-dim);   color: var(--red); }
+    .dis-delta.down { background: var(--green-dim);  color: var(--green); }
+    .dis-delta.flat { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+
+    /* Track bar */
+    .dis-track-wrap { flex: 1; min-width: 0; }
+    .dis-track-label {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      letter-spacing: 0.05em;
+    }
+    .dis-track {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg,
+        rgba(46,200,135,0.3)   0%,
+        rgba(201,168,76,0.4)  33%,
+        rgba(240,146,43,0.5)  60%,
+        rgba(224,86,86,0.7)  80%,
+        rgba(224,86,86,1.0) 100%
+      );
+      position: relative;
+    }
+    .dis-needle {
+      position: absolute;
+      top: -4px;
+      width: 3px; height: 16px;
+      border-radius: 2px;
+      background: white;
+      box-shadow: 0 0 6px rgba(0,0,0,0.6);
+      transform: translateX(-50%);
+      transition: left 1.2s cubic-bezier(.22,.61,.36,1);
+    }
+
+    /* Driver pills */
+    .dis-drivers {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .dis-driver {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      min-width: 70px;
+    }
+    .dis-driver-val {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .dis-driver-lbl {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── NETWORK GRAPH ──────────────────────────────────────────────── */
+    .network-card {
+      background: #080e1a;
+      border: 1px solid rgba(201, 168, 76, 0.15);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 28px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .network-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.015);
+    }
+    #networkSvg {
+      width: 100%;
+      height: 400px;
+      display: block;
+      background: radial-gradient(ellipse at 50% 50%, rgba(12,18,30,1) 0%, rgba(6,9,15,1) 100%);
+    }
+    .network-legend {
+      display: flex;
+      gap: 16px;
+      padding: 10px 20px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.01);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    /* D3 tooltip */
+    #networkTooltip {
+      position: fixed;
+      background: #0c111c;
+      border: 1px solid rgba(201, 168, 76, 0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-primary);
+      pointer-events: none;
+      display: none;
+      z-index: 9999;
+      max-width: 200px;
+      line-height: 1.6;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    /* ── PAGE CONTENT ─────────────────────────────────────────────── */
+    .page-content {
+      padding: 24px 32px 40px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.02em;
+    }
+
+    .section-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── ALERT ITEMS ───────────────────────────────────────────────── */
+    .alert-feed { padding: 4px 0; }
+
+    .alert-item {
+      display: flex;
+      gap: 12px;
+      padding: 11px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.025);
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-item:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── DISTRIBUTOR ROWS ─────────────────────────────────────────── */
+    .distributor-rows { padding: 4px 0; }
+
+    .dist-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.025);
+      transition: background 0.15s;
+    }
+    .dist-row:last-child { border-bottom: none; }
+    .dist-row:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── SCORE BAR ─────────────────────────────────────────────────── */
+    .score-bar-bg {
+      width: 64px;
+      height: 3px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.9s ease;
+    }
+
+    /* ── DECORATIVE LINE ───────────────────────────────────────────── */
+    .decorative-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,0.15), transparent);
+      margin: 4px 0 24px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.02em;
+    }
+
+    .section-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ── KPI GRID ─────────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      animation: fade-up 0.5s ease both;
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(255,255,255,0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    /* Subtle gradient shimmer on card interior */
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 60%);
+      pointer-events: none;
+      border-radius: var(--radius-md);
+    }
+
+    .kpi-card.gold::before  { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+    .kpi-card.red::before   { background: linear-gradient(90deg, var(--red), #f07070); }
+    .kpi-card.amber::before { background: linear-gradient(90deg, var(--amber), #f5b55a); }
+    .kpi-card.green::before { background: linear-gradient(90deg, var(--green), #5eeaaa); }
+    .kpi-card.blue::before  { background: linear-gradient(90deg, var(--blue), #7ab8f5); }
+
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 30px;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-card.gold .kpi-value  { color: var(--gold-light); }
+    .kpi-card.red .kpi-value   { color: var(--red); }
+    .kpi-card.amber .kpi-value { color: var(--amber); }
+    .kpi-card.green .kpi-value { color: var(--green); }
+    .kpi-card.blue .kpi-value  { color: var(--blue); }
+
+    .kpi-sub {
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+    .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+
+    /* ── CHARTS GRID ──────────────────────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      transition: border-color 0.2s;
+    }
+
+    .chart-card:hover {
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .chart-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .chart-badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .badge-live {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(46, 200, 135, 0.2);
+    }
+
+    .badge-ai {
+      background: var(--gold-dim);
+      color: var(--gold);
+      border: 1px solid var(--border-accent);
+    }
+
+    canvas { max-height: 240px; }
+
+    /* ── BOTTOM GRID ──────────────────────────────────────────────── */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    /* ── LISTINGS TABLE ───────────────────────────────────────────── */
+    .data-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .data-card:hover {
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .data-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-card-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .view-all-link {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--gold);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      transition: opacity 0.15s;
+    }
+
+    .view-all-link:hover { opacity: 1; }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+    }
+
+    .data-table td {
+      font-size: 12px;
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.028);
+      color: var(--text-secondary);
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .data-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+    .mono { font-family: var(--font-mono); font-size: 11px; }
+
+    /* ── RISK BADGES ──────────────────────────────────────────────── */
+    .risk-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .risk-critical { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(224,86,86,0.2); }
+    .risk-high     { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,146,43,0.2); }
+    .risk-medium   { background: var(--gold-dim);  color: var(--gold);  border: 1px solid var(--border-accent); }
+    .risk-low      { background: var(--green-dim); color: var(--green); border: 1px solid rgba(46,200,135,0.15); }
+
+    .risk-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+    }
+
+    .risk-critical .risk-dot { background: var(--red); }
+    .risk-high     .risk-dot { background: var(--amber); }
+    .risk-medium   .risk-dot { background: var(--gold); }
+    .risk-low      .risk-dot { background: var(--green); }
+
+    /* ── ALERT FEED ───────────────────────────────────────────────── */
+    .alert-feed { padding: 8px 0; }
+
+    .alert-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.028);
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .alert-item:last-child { border-bottom: none; }
+    .alert-item:hover { background: rgba(255,255,255,0.015); }
+
+    .alert-dot-wrap {
+      padding-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .alert-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    .alert-dot.critical { background: var(--red);   box-shadow: 0 0 5px var(--red); }
+    .alert-dot.high     { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+    .alert-dot.medium   { background: var(--gold);  box-shadow: 0 0 5px var(--gold); }
+
+    .alert-body { flex: 1; min-width: 0; }
+
+    .alert-title {
+      font-size: 12px;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .alert-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+    }
+
+    .alert-impact {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--amber);
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    /* ── MAISON EXPOSURE MINI ─────────────────────────────────────── */
+    .distributor-rows { padding: 4px 0; }
+
+    .dist-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.028);
+    }
+
+    .dist-row:last-child { border-bottom: none; }
+
+    .dist-rank {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 18px;
+      text-align: center;
+    }
+
+    .dist-name {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dist-name-text {
+      font-size: 12px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .dist-region {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .dist-score-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .dist-score {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .score-bar-bg {
+      width: 60px;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.8s ease;
+    }
+
+    /* ── LOADING SKELETON ─────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── DIVIDER ──────────────────────────────────────────────────── */
+    .decorative-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0 0 28px;
+    }
+
+    /* ── SCROLLBAR ────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+    /* ── RESPONSIVE ───────────────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- D3 for network graph -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+
+<!-- Network tooltip -->
+<div id="networkTooltip"></div>
+
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">LVMH</div>
+      <div class="brand-sub">Grey Market Intelligence</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item active" href="/">
+        <span class="nav-icon">◈</span> Dashboard
+      </a>
+      <a class="nav-item" href="/listings">
+        <span class="nav-icon">◉</span> Marketplace Monitor
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Intelligence</div>
+      <a class="nav-item" href="/distributors">
+        <span class="nav-icon">▣</span> Distributor Risk
+        <span style="margin-left:auto;font-size:9px;background:var(--green-dim);color:var(--green);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">LIVE</span>
+      </a>
+      <a class="nav-item" href="/analytics">
+        <span class="nav-icon">◆</span> Price &amp; Allocation
+        <span style="margin-left:auto;font-size:9px;background:var(--green-dim);color:var(--green);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">LIVE</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">⬡</span> Allocation Intel
+        <span style="margin-left:auto;font-size:9px;background:var(--blue-dim);color:var(--blue);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">PH3</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Analytics</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">▤</span> Deep Analytics
+        <span style="margin-left:auto;font-size:9px;background:var(--blue-dim);color:var(--blue);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">PH3</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <div class="status-dot"></div>
+        System Active · Phase 2
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:5px;letter-spacing:0.03em;">
+        IS 534 · Group 1 · UIUC
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-title">Diversion Intelligence Overview</div>
+      <div class="topbar-right">
+        <div class="scan-meta" id="scanMeta">
+          <span class="scan-live-dot"></span>System Active
+        </div>
+        <div class="timestamp" id="live-clock">—</div>
+        <button class="scan-btn" id="scanBtn" onclick="runScan()">
+          <span>▶</span> Run Scan
+        </button>
+      </div>
+    </header>
+
+    <!-- DIS Gauge Strip -->
+    <div class="dis-strip" id="disStrip">
+      <div class="dis-label-block">
+        <div class="dis-title">Diversion Intelligence Score</div>
+        <div class="dis-band" id="disBand" style="color:var(--amber);">Loading…</div>
+      </div>
+      <div class="dis-score-block">
+        <div class="dis-number" id="disNumber" style="color:var(--amber);">—</div>
+        <div class="dis-delta flat" id="disDelta" style="display:none;"></div>
+      </div>
+      <div class="dis-track-wrap">
+        <div class="dis-track-label">
+          <span>Controlled</span><span>Elevated</span><span>High</span><span>Critical</span>
+        </div>
+        <div class="dis-track">
+          <div class="dis-needle" id="disNeedle" style="left:0%;"></div>
+        </div>
+      </div>
+      <div class="dis-drivers" id="disDrivers">
+        <div class="dis-driver">
+          <div class="dis-driver-val" id="drvFlagged" style="color:var(--red);">—</div>
+          <div class="dis-driver-lbl">Listing Rate</div>
+        </div>
+        <div class="dis-driver">
+          <div class="dis-driver-val" id="drvDist" style="color:var(--amber);">—</div>
+          <div class="dis-driver-lbl">Dist. Risk</div>
+        </div>
+        <div class="dis-driver">
+          <div class="dis-driver-val" id="drvGap" style="color:var(--gold);">—</div>
+          <div class="dis-driver-lbl">Price Gap</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Results Panel -->
+    <div id="scanResultsPanel" style="display:none;background:#080d16;border-bottom:1px solid rgba(255,255,255,0.055);padding:0 32px;overflow:hidden;width:100%;box-sizing:border-box;">
+      <div id="scanResultsInner" style="padding:16px 0;overflow:hidden;"></div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="page-content">
+
+      <!-- KPI Cards -->
+      <div class="section-header">
+        <span class="section-title">Key Performance Indicators</span>
+        <span class="section-meta">Last 30 days · Synthetic Demo Data</span>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card gold skeleton" style="height:100px;"></div>
+        <div class="kpi-card red skeleton" style="height:100px;animation-delay:.05s"></div>
+        <div class="kpi-card amber skeleton" style="height:100px;animation-delay:.10s"></div>
+        <div class="kpi-card green skeleton" style="height:100px;animation-delay:.15s"></div>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- Charts Row -->
+      <div class="section-header">
+        <span class="section-title">Signal Distribution</span>
+        <span class="section-meta">Marketplace & Regional Exposure</span>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Price Gap by Region</div>
+            <span class="chart-badge badge-ai">ML Signal</span>
+          </div>
+          <canvas id="priceGapChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Platform Distribution</div>
+            <span class="chart-badge badge-live">Live</span>
+          </div>
+          <canvas id="platformChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Detection Trend (full-width) -->
+      <div class="chart-card" style="margin-bottom:14px;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">30-Day Detection Trend</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:3px;">Total listings scanned vs. flagged per day — post-scan reclassifications shown in red</div>
+          </div>
+          <span class="chart-badge badge-live">Live · Updates on Scan</span>
+        </div>
+        <canvas id="trendChart" style="max-height:180px;"></canvas>
+      </div>
+
+      <div class="charts-grid" style="margin-bottom:28px;">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Flagged Listings by Maison</div>
+            <span class="chart-badge badge-ai">Brand Exposure</span>
+          </div>
+          <canvas id="maisonChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Distributor Risk Ladder</div>
+            <span class="chart-badge badge-ai">Scoring Model</span>
+          </div>
+          <canvas id="riskLadderChart"></canvas>
+        </div>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- Seller Network Graph -->
+      <div class="section-header">
+        <span class="section-title">Seller Network Intelligence</span>
+        <span class="section-meta">Connected reseller clusters · Node size = listing volume · Edges = shared SKU or region signals</span>
+      </div>
+      <div class="network-card">
+        <div class="network-header">
+          <div>
+            <div class="chart-title">Coordinated Reseller Network Map</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:3px;">Flagged sellers connected by shared SKU clusters or platform-region co-occurrence</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);" id="networkStats">Loading…</span>
+            <span class="chart-badge badge-ai">D3 · Live Graph</span>
+          </div>
+        </div>
+        <svg id="networkSvg"></svg>
+        <div class="network-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div>Critical</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--amber);"></div>High</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--gold);"></div>Medium</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div>Low</div>
+          <div class="legend-item" style="margin-left:auto;">
+            <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">Hover nodes for detail · Drag to reposition</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Listings + Alerts -->
+      <div class="bottom-grid">
+        <div class="data-card">
+          <div class="data-card-header">
+            <div class="data-card-title">Recent Flagged Listings</div>
+            <a href="/listings" class="view-all-link">View All →</a>
+          </div>
+          <table class="data-table" id="listingsTable">
+            <thead>
+              <tr>
+                <th>Maison / Product</th>
+                <th>Platform</th>
+                <th>Deviation</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody id="listingsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="data-card">
+          <div class="data-card-header">
+            <div class="data-card-title">Live Alert Feed</div>
+            <span class="chart-badge badge-live" style="font-size:9px;">Open + Investigating</span>
+          </div>
+          <div class="alert-feed" id="alertFeed"></div>
+        </div>
+      </div>
+
+      <!-- Distributor Risk Top 10 -->
+      <div class="section-header">
+        <span class="section-title">Top Risk Distributors</span>
+        <span class="section-meta">Highest ML risk score · Full details at Distributor Risk</span>
+      </div>
+      <div class="data-card">
+        <div class="distributor-rows" id="distributorRows"></div>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+</div><!-- /app-shell -->
+
+
+<script>
+/* ── UTILITIES ────────────────────────────────────────────────────────────── */
+const fmt = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
+const fmtUSD = (n) => "$" + new Intl.NumberFormat("en-US", {notation: n > 999999 ? "compact" : "standard", maximumFractionDigits: 1}).format(n);
+const fmtPct = (n) => (n > 0 ? "+" : "") + n.toFixed(1) + "%";
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("live-clock").textContent =
+    now.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+    " · " + now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ── CHART DEFAULTS ───────────────────────────────────────────────────────── */
+Chart.defaults.color = "#525561";
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const GOLD = "#c9a84c";
+const RED  = "#e05656";
+const AMBER = "#f0922b";
+const GREEN = "#2ec887";
+const BLUE  = "#4a90d9";
+const SLATE = "#3a4a6a";
+
+/* ── CHART.JS PLUGIN: transparent background ─────────────────────────────── */
+Chart.register({
+  id: "transparentBg",
+  beforeDraw(chart) {
+    const ctx = chart.canvas.getContext("2d");
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = "transparent";
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  }
+});
+
+/* ── SCAN PIPELINE ────────────────────────────────────────────────────────── */
+async function runScan() {
+  const btn = document.getElementById("scanBtn");
+  const panel = document.getElementById("scanResultsPanel");
+  const inner = document.getElementById("scanResultsInner");
+
+  btn.classList.add("scanning");
+  btn.innerHTML = `<span>⟳</span> Running ML Scan…`;
+  btn.disabled = true;
+  panel.style.display = "none";
+
+  const steps = [
+    "Initialising Isolation Forest…",
+    "Scoring 520 listings…",
+    "Re-scoring distributors…",
+    "Persisting deltas…"
+  ];
+  for (const step of steps) {
+    btn.innerHTML = `<span>⟳</span> ${step}`;
+    await new Promise(r => setTimeout(r, 480));
+  }
+
+  let result;
+  try {
+    result = await fetch("/api/scan", { method: "POST" }).then(r => r.json());
+  } catch (e) {
+    btn.classList.remove("scanning");
+    btn.innerHTML = `<span>▶</span> Run Scan`;
+    btn.disabled = false;
+    inner.innerHTML = `<span style="color:var(--red);font-family:var(--font-mono);font-size:11px;">⚠ Scan failed — check Flask server is running with ml_engine.py present.</span>`;
+    panel.style.display = "block";
+    return;
+  }
+
+  btn.classList.remove("scanning");
+  btn.innerHTML = `<span>✓</span> Scan Complete`;
+  setTimeout(() => { btn.innerHTML = `<span>▶</span> Run Scan`; btn.disabled = false; }, 3000);
+
+  // Persist last scan time
+  const scanTime = result.scan_completed_at
+    ? result.scan_completed_at.slice(5, 16).replace(" ", " · ")
+    : new Date().toLocaleString("en-US", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+  localStorage.setItem("lvmh_last_scan", scanTime);
+  updateScanMeta(scanTime);
+
+  // Render results panel
+  inner.innerHTML = buildScanResultsHTML(result);
+  panel.style.display = "block";
+
+  // Refresh all data including DIS gauge, trend chart, and network graph
+  await loadAll();
+  loadTrendChart();
+  loadNetworkGraph();
+}
+
+/* ── EVIDENCE TRAIL ──────────────────────────────────────────────────────── */
+function toggleEvidence(id) {
+  const el = document.getElementById("ev-" + id);
+  const arrow = document.getElementById("arrow-" + id);
+  if (!el) return;
+  const isOpen = el.style.display !== "none";
+  el.style.display = isOpen ? "none" : "block";
+  if (arrow) arrow.textContent = isOpen ? "▾" : "▴";
+}
+
+function evidenceHTML(l) {
+  const devAbs = Math.abs(l.price_deviation_pct || 0);
+  const devColor = devAbs > 25 ? "var(--red)" : devAbs > 15 ? "var(--amber)" : "var(--gold)";
+  const mlPct = Math.round((l.ml_anomaly_score || 0) * 100);
+  const mlColor = mlPct >= 80 ? "var(--red)" : mlPct >= 60 ? "var(--amber)" : "var(--gold)";
+
+  const HIGH_RISK_P = ["Dewu (得物)", "Xianyu (闲鱼)", "Taobao (淘宝)", "StockX", "Depop", "Poshmark"];
+  const MED_RISK_P  = ["Vestiaire Collective", "The RealReal", "eBay", "Mercari"];
+  const platformRisk = HIGH_RISK_P.includes(l.platform) ? "High" : MED_RISK_P.includes(l.platform) ? "Medium" : "Low";
+  const platColor = platformRisk === "High" ? "var(--red)" : platformRisk === "Medium" ? "var(--amber)" : "var(--green)";
+  const rCol = { Critical:"var(--red)", High:"var(--amber)", Medium:"var(--gold)", Low:"var(--green)" };
+
+  const triggerRule = (l.flag_reason && l.flag_reason.trim())
+    ? l.flag_reason
+    : devAbs > 25 ? `Price ${(l.price_deviation_pct||0).toFixed(1)}% below MSRP — structural arbitrage signal`
+    : devAbs > 15 ? `Price ${(l.price_deviation_pct||0).toFixed(1)}% below regional floor — diversion signal`
+    : mlPct >= 70 ? `ML anomaly score ${mlPct}% — pattern matches known grey market behavior`
+    : `Elevated ML score combined with high-risk platform classification`;
+
+  return `<div id="ev-${l.listing_id}" style="display:none;background:rgba(255,255,255,0.018);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:12px 14px;margin:4px 0 8px 0;">
+    <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Evidence Breakdown · ${l.listing_id} · ${l.maison || ""}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;">
+      <div style="background:rgba(255,255,255,0.02);border-radius:4px;padding:10px 12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Price Deviation</div>
+        <div style="font-family:var(--font-mono);font-size:20px;color:${devColor};font-weight:500;">${(l.price_deviation_pct||0).toFixed(1)}%</div>
+        <div style="margin-top:6px;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.min(100,devAbs*2)}%;background:${devColor};border-radius:2px;"></div></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">vs. regional MSRP</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02);border-radius:4px;padding:10px 12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Isolation Forest</div>
+        <div style="font-family:var(--font-mono);font-size:20px;color:${mlColor};font-weight:500;">${mlPct}%</div>
+        <div style="margin-top:6px;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${mlPct}%;background:${mlColor};border-radius:2px;"></div></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">anomaly confidence</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02);border-radius:4px;padding:10px 12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Platform Risk</div>
+        <div style="font-family:var(--font-mono);font-size:20px;color:${platColor};font-weight:500;">${platformRisk}</div>
+        <div style="font-size:10px;color:var(--text-secondary);margin-top:8px;">${l.platform}</div>
+        <div style="font-size:10px;color:var(--text-muted);">channel classification</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,0.02);border-radius:4px;padding:10px 12px;">
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);flex-shrink:0;padding-top:1px;">Trigger</span>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <span style="font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--text-secondary);">${l.old_risk}</span>
+          <span style="color:var(--text-muted);">→</span>
+          <span style="font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:3px;color:${rCol[l.new_risk]||"var(--gold)"};">${l.new_risk}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);">${triggerRule}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildScanResultsHTML(r) {
+  const s = r.summary;
+  const sevColor = { critical:"var(--red)", warning:"var(--amber)", info:"var(--gold)", clear:"var(--green)" }[r.severity] || "var(--gold)";
+  const sevIcon  = { critical:"⚠", warning:"⚡", info:"◉", clear:"✓" }[r.severity] || "◉";
+
+  /* Distributor change rows */
+  const distRows = (r.top_distributor_changes || []).map(d => {
+    const dir = d.escalated ? "↑" : d.deescalated ? "↓" : "~";
+    const col = d.escalated ? "var(--red)" : d.deescalated ? "var(--green)" : "var(--text-muted)";
+    const tierCol = {"Hold Shipment":"var(--red)","Trigger Audit":"var(--amber)","Flag for Review":"var(--gold)","Monitor":"var(--green)"}[d.new_tier] || "var(--text-secondary)";
+    const shortTier = d.new_tier.replace("Flag for Review","Flagged").replace("Trigger Audit","Audit").replace("Hold Shipment","Hold");
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.028);">
+      <span style="font-family:var(--font-mono);font-size:10px;color:${col};width:12px;flex-shrink:0;">${dir}</span>
+      <span style="font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:${col};flex-shrink:0;">${d.delta > 0 ? "+" : ""}${d.delta}</span>
+      <span style="font-family:var(--font-mono);font-size:8px;color:${tierCol};background:rgba(255,255,255,0.04);padding:2px 5px;border-radius:3px;flex-shrink:0;">${shortTier}</span>
+    </div>`;
+  }).join("") || `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);padding:6px 0;">No significant changes.</div>`;
+
+  /* Listing escalation rows — CLICKABLE, expand evidence on click */
+  const listRows = (r.top_listing_escalations || []).map(l => {
+    const rCol = {"Critical":"var(--red)","High":"var(--amber)","Medium":"var(--gold)","Low":"var(--green)"}[l.new_risk] || "var(--text-secondary)";
+    return `<div style="margin-bottom:2px;">
+      <div onclick="toggleEvidence('${l.listing_id}')"
+           style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;transition:background .15s;"
+           onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);flex-shrink:0;">${l.listing_id}</span>
+        <span style="font-size:11px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.platform}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--amber);flex-shrink:0;">${(l.price_deviation_pct||0).toFixed(1)}%</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);flex-shrink:0;">${l.old_risk}</span>
+        <span style="color:var(--text-muted);flex-shrink:0;">→</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:${rCol};font-weight:500;flex-shrink:0;">${l.new_risk}</span>
+        <span style="font-family:var(--font-mono);font-size:8px;color:var(--blue);background:var(--blue-dim);padding:2px 5px;border-radius:3px;flex-shrink:0;">${Math.round((l.ml_anomaly_score||0)*100)}%</span>
+        <span id="arrow-${l.listing_id}" style="color:var(--gold);font-size:12px;flex-shrink:0;" title="Click to expand">▾</span>
+      </div>
+      ${evidenceHTML(l)}
+    </div>`;
+  }).join("") || `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);padding:6px 0;">No escalations detected.</div>`;
+
+  /* Stat pills */
+  const ps = `font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:3px;white-space:nowrap;`;
+  const pills = `
+    <div style="${ps}background:rgba(255,255,255,0.04);color:var(--text-secondary);">Scanned <strong style="color:var(--text-primary);">${s.listings_scanned}</strong></div>
+    <div style="${ps}background:var(--amber-dim);color:var(--amber);">Reclassified <strong>${s.listings_reclassified}</strong></div>
+    <div style="${ps}background:var(--red-dim);color:var(--red);">New Critical <strong>${s.new_critical}</strong></div>
+    <div style="${ps}background:var(--gold-dim);color:var(--gold);">New High <strong>${s.new_high}</strong></div>
+    <div style="${ps}background:rgba(255,255,255,0.04);color:var(--text-secondary);">Distributors <strong style="color:var(--text-primary);">${s.distributors_rescored}</strong></div>
+    <div style="${ps}background:var(--red-dim);color:var(--red);">Escalated <strong>${s.distributors_escalated}</strong></div>
+    <div style="${ps}background:var(--green-dim);color:var(--green);">De-escalated <strong>${s.distributors_deescalated}</strong></div>`;
+
+  return `
+  <!-- Row 1: severity + stat pills -->
+  <div style="display:flex;align-items:flex-start;gap:0;min-width:0;">
+    <div style="display:flex;align-items:center;gap:10px;padding-right:20px;border-right:1px solid rgba(255,255,255,0.055);margin-right:20px;flex-shrink:0;">
+      <span style="font-size:18px;color:${sevColor};">${sevIcon}</span>
+      <div>
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);">Scan Complete</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);margin-top:2px;">${r.scan_duration_ms}ms · ${r.scan_completed_at.slice(11,19)} UTC</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;">${pills}</div>
+  </div>
+
+  <!-- Row 2: distributor changes | listing escalations -->
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04);">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Top Distributor Changes</div>
+      ${distRows}
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);">Listing Escalations (ML)</div>
+        <span style="font-family:var(--font-mono);font-size:8px;color:var(--blue);background:var(--blue-dim);padding:2px 6px;border-radius:3px;">▾ Click row to expand evidence</span>
+      </div>
+      ${listRows}
+    </div>
+  </div>
+
+  <!-- Narrative -->
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04);font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.03em;">${r.narrative}</div>`;
+}
+
+/* ── RISK COLORS ──────────────────────────────────────────────────────────── */
+function riskColor(level) {
+  return { Critical: RED, High: AMBER, Medium: GOLD, Low: GREEN }[level] || SLATE;
+}
+
+function riskBadgeHtml(level) {
+  const cls = { Critical: "risk-critical", High: "risk-high", Medium: "risk-medium", Low: "risk-low" }[level] || "risk-low";
+  return `<span class="risk-badge ${cls}"><span class="risk-dot"></span>${level}</span>`;
+}
+
+function scoreColor(score) {
+  if (score >= 86) return RED;
+  if (score >= 66) return AMBER;
+  if (score >= 41) return GOLD;
+  return GREEN;
+}
+
+/* ── LOAD KPIs ────────────────────────────────────────────────────────────── */
+async function loadKPIs() {
+  const data = await fetch("/api/kpis").then(r => r.json());
+  const grid = document.getElementById("kpiGrid");
+  grid.innerHTML = `
+    <div class="kpi-card gold" style="animation-delay:0.05s">
+      <div class="kpi-label">Listings Scanned</div>
+      <div class="kpi-value">${fmt(data.total_listings_scanned)}</div>
+      <div class="kpi-sub">${data.total_products} products · ${data.total_distributors} distributors</div>
+    </div>
+    <div class="kpi-card red" style="animation-delay:0.10s">
+      <div class="kpi-label">Unauthorized Flagged</div>
+      <div class="kpi-value">${fmt(data.unauthorized_flagged)}</div>
+      <div class="kpi-sub">${data.critical_listings} Critical · ${data.detection_rate_pct}% detection rate</div>
+    </div>
+    <div class="kpi-card amber" style="animation-delay:0.15s">
+      <div class="kpi-label">High-Risk Distributors</div>
+      <div class="kpi-value">${data.high_risk_distributors}</div>
+      <div class="kpi-sub">${data.hold_shipment_distributors} on Hold Shipment status</div>
+    </div>
+    <div class="kpi-card green" style="animation-delay:0.20s">
+      <div class="kpi-label">Revenue at Risk</div>
+      <div class="kpi-value">${fmtUSD(data.revenue_at_risk_usd)}</div>
+      <div class="kpi-sub">${data.open_alerts} open alerts · recoverable margin</div>
+    </div>
+  `;
+}
+
+/* ── CHART: Price Gap by Region ──────────────────────────────────────────── */
+async function loadPriceGapChart() {
+  const data = await fetch("/api/charts/price-gap-by-region").then(r => r.json());
+  const labels = data.map(d => d.region.replace(" & ", " &\n").replace(" East", "\nEast"));
+  const gaps = data.map(d => d.avg_gap_pct);
+  const arbitrage = data.map(d => d.total_arbitrage_usd);
+
+  const maxGap = Math.max(...gaps);
+  const colors = gaps.map(g => {
+    const intensity = g / maxGap;
+    return `rgba(201, 168, 76, ${0.3 + intensity * 0.7})`;
+  });
+
+  new Chart(document.getElementById("priceGapChart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Avg Price Gap %",
+        data: gaps,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace(/[\d.]+\)$/, "1)")),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+          callbacks: {
+            label: (ctx) => ` Gap: ${ctx.raw.toFixed(1)}%`,
+            afterLabel: (ctx) => ` Arbitrage: $${fmt(arbitrage[ctx.dataIndex])}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.025)" },
+          ticks: { font: { size: 9 }, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.025)" },
+          ticks: { callback: v => v + "%" }
+        }
+      }
+    }
+  });
+}
+
+/* ── CHART: Platform Distribution ───────────────────────────────────────── */
+async function loadPlatformChart() {
+  const data = await fetch("/api/charts/platform-distribution").then(r => r.json()).then(d => d.slice(0, 7));
+  const palette = [GOLD, AMBER, RED, "#7c6cd4", BLUE, GREEN, "#a04060"];
+
+  new Chart(document.getElementById("platformChart"), {
+    type: "doughnut",
+    data: {
+      labels: data.map(d => d.platform),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: palette.map(c => c + "cc"),
+        borderColor: "#0c111c",
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: "62%",
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            boxWidth: 8,
+            boxHeight: 8,
+            padding: 10,
+            font: { size: 10 },
+            color: "#8a8c96",
+          }
+        },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+          callbacks: {
+            label: (ctx) => ` ${ctx.raw} listings · ${data[ctx.dataIndex].flagged} flagged`
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ── CHART: Maison Exposure ─────────────────────────────────────────────── */
+async function loadMaisonChart() {
+  const data = await fetch("/api/charts/maison-exposure").then(r => r.json());
+  new Chart(document.getElementById("maisonChart"), {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.maison),
+      datasets: [
+        {
+          label: "Total Listings",
+          data: data.map(d => d.total),
+          backgroundColor: "rgba(74, 144, 217, 0.18)",
+          borderColor: "rgba(74, 144, 217, 0.4)",
+          borderWidth: 1,
+          borderRadius: 3,
+        },
+        {
+          label: "Flagged",
+          data: data.map(d => d.flagged),
+          backgroundColor: "rgba(224, 86, 86, 0.55)",
+          borderColor: RED,
+          borderWidth: 1,
+          borderRadius: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: { boxWidth: 8, boxHeight: 8, font: { size: 10 }, color: "#8a8c96" }
+        },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 25 } },
+        y: { grid: { color: "rgba(255,255,255,0.025)" } }
+      }
+    }
+  });
+}
+
+/* ── CHART: Risk Ladder ─────────────────────────────────────────────────── */
+async function loadRiskLadderChart() {
+  const data = await fetch("/api/charts/risk-score-distribution").then(r => r.json());
+  const colors = [GREEN, GOLD, AMBER, RED];
+
+  new Chart(document.getElementById("riskLadderChart"), {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.tier),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: colors.map(c => c + "aa"),
+        borderColor: colors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+          callbacks: { label: (ctx) => ` ${ctx.raw} distributors` }
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,0.025)" } },
+        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+/* ── LISTINGS TABLE ──────────────────────────────────────────────────────── */
+async function loadListingsTable() {
+  const data = await fetch("/api/listings/flagged/recent").then(r => r.json());
+  const tbody = document.getElementById("listingsTableBody");
+  tbody.innerHTML = data.map(l => `
+    <tr>
+      <td>
+        <div style="color:var(--text-primary);font-size:12px;font-weight:500;">${l.maison}</div>
+        <div class="mono" style="color:var(--text-muted);font-size:10px;">${l.product_name.length > 20 ? l.product_name.slice(0,18)+"…" : l.product_name}</div>
+      </td>
+      <td>
+        <span style="font-size:11px;">${l.platform.length > 16 ? l.platform.slice(0,14)+"…" : l.platform}</span>
+      </td>
+      <td>
+        <span class="mono" style="color:${l.price_deviation_pct < -20 ? 'var(--red)' : 'var(--amber)'};">
+          ${fmtPct(l.price_deviation_pct)}
+        </span>
+      </td>
+      <td>${riskBadgeHtml(l.risk_level)}</td>
+    </tr>
+  `).join("");
+}
+
+/* ── ALERT FEED ──────────────────────────────────────────────────────────── */
+async function loadAlerts() {
+  const data = await fetch("/api/alerts?n=8").then(r => r.json());
+  const feed = document.getElementById("alertFeed");
+  feed.innerHTML = data.map(a => `
+    <div class="alert-item">
+      <div class="alert-dot-wrap">
+        <div class="alert-dot ${a.severity.toLowerCase()}"></div>
+      </div>
+      <div class="alert-body">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-meta">
+          <span>${a.maison}</span>
+          <span>${a.region}</span>
+          <span>${a.created_at.split(" ")[0]}</span>
+        </div>
+      </div>
+      <div class="alert-impact">${fmtUSD(a.estimated_impact_usd)}</div>
+    </div>
+  `).join("");
+}
+
+/* ── DISTRIBUTOR ROWS ────────────────────────────────────────────────────── */
+async function loadDistributors() {
+  const data = await fetch("/api/distributors/top-risk").then(r => r.json());
+  const container = document.getElementById("distributorRows");
+  container.innerHTML = data.map((d, i) => {
+    const col = scoreColor(d.risk_score);
+    return `
+      <div class="dist-row">
+        <div class="dist-rank">${String(i+1).padStart(2, "0")}</div>
+        <div class="dist-name">
+          <span class="dist-name-text">${d.name}</span>
+          <span class="dist-region">${d.country} · ${d.region}</span>
+        </div>
+        <div style="flex:1;padding:0 10px;">
+          <span class="risk-badge ${
+            d.risk_tier === 'Hold Shipment' ? 'risk-critical' :
+            d.risk_tier === 'Trigger Audit' ? 'risk-high' :
+            d.risk_tier === 'Flag for Review' ? 'risk-medium' : 'risk-low'
+          }">${d.risk_tier}</span>
+        </div>
+        <div class="dist-score-wrap">
+          <span class="dist-score" style="color:${col};">${d.risk_score}</span>
+          <div class="score-bar-bg">
+            <div class="score-bar-fill" style="width:${d.risk_score}%;background:${col};"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ── LOAD ALL ────────────────────────────────────────────────────────────── */
+async function loadAll() {
+  await Promise.all([
+    loadKPIs(),
+    loadListingsTable(),
+    loadAlerts(),
+    loadDistributors(),
+    loadDIS(),
+  ]);
+}
+
+/* ── DIS GAUGE ────────────────────────────────────────────────────────────── */
+let _prevDIS = null;
+const DIS_COLORS = {
+  Critical:   "var(--red)",
+  High:       "var(--amber)",
+  Elevated:   "var(--gold)",
+  Controlled: "var(--green)",
+};
+
+async function loadDIS() {
+  let data;
+  try { data = await fetch("/api/dis").then(r => r.json()); }
+  catch(e) { return; }
+
+  const score = data.score;
+  const col = DIS_COLORS[data.band] || "var(--amber)";
+
+  document.getElementById("disNumber").textContent = score.toFixed(1);
+  document.getElementById("disNumber").style.color = col;
+  document.getElementById("disBand").textContent = data.band + " — " + data.label;
+  document.getElementById("disBand").style.color = col;
+  document.getElementById("disNeedle").style.left = Math.min(98, score) + "%";
+
+  // Delta vs previous
+  const deltaEl = document.getElementById("disDelta");
+  if (_prevDIS !== null) {
+    const delta = score - _prevDIS;
+    deltaEl.style.display = "inline-block";
+    if (Math.abs(delta) < 0.2) {
+      deltaEl.className = "dis-delta flat";
+      deltaEl.textContent = "→ no change";
+    } else if (delta > 0) {
+      deltaEl.className = "dis-delta up";
+      deltaEl.textContent = "▲ +" + delta.toFixed(1);
+    } else {
+      deltaEl.className = "dis-delta down";
+      deltaEl.textContent = "▼ " + delta.toFixed(1);
+    }
+  }
+  _prevDIS = score;
+
+  // Drivers
+  const d = data.drivers;
+  const drvColors = (v) => v >= 70 ? "var(--red)" : v >= 45 ? "var(--amber)" : v >= 25 ? "var(--gold)" : "var(--green)";
+  document.getElementById("drvFlagged").textContent = d.flagged_listing_rate.toFixed(0);
+  document.getElementById("drvFlagged").style.color = drvColors(d.flagged_listing_rate);
+  document.getElementById("drvDist").textContent = d.avg_distributor_risk.toFixed(0);
+  document.getElementById("drvDist").style.color = drvColors(d.avg_distributor_risk);
+  document.getElementById("drvGap").textContent = d.avg_price_gap.toFixed(0);
+  document.getElementById("drvGap").style.color = drvColors(d.avg_price_gap);
+}
+
+/* ── 30-DAY TREND CHART ───────────────────────────────────────────────────── */
+let _trendChart = null;
+
+async function loadTrendChart() {
+  const data = await fetch("/api/charts/daily-detections").then(r => r.json());
+  if (!data.length) return;
+
+  const labels = data.map(d => {
+    const dt = new Date(d.day);
+    return (dt.getMonth()+1) + "/" + dt.getDate();
+  });
+  const totals  = data.map(d => d.total);
+  const flagged = data.map(d => d.flagged);
+
+  const ctx = document.getElementById("trendChart");
+  if (_trendChart) { _trendChart.destroy(); }
+
+  _trendChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Scanned",
+          data: totals,
+          borderColor: "rgba(74,144,217,0.7)",
+          backgroundColor: "rgba(74,144,217,0.06)",
+          pointRadius: 3,
+          pointBackgroundColor: BLUE,
+          tension: 0.35,
+          fill: true,
+          order: 2,
+        },
+        {
+          label: "Flagged",
+          data: flagged,
+          borderColor: RED,
+          backgroundColor: "rgba(224,86,86,0.08)",
+          pointRadius: 3,
+          pointBackgroundColor: RED,
+          tension: 0.35,
+          fill: true,
+          order: 1,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          display: true, position: "top",
+          labels: { boxWidth: 8, boxHeight: 8, font: { size: 10 }, color: "#8a8c96" }
+        },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 }, maxTicksLimit: 15 } },
+        y: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+/* ── SELLER NETWORK GRAPH (D3) ───────────────────────────────────────────── */
+let _networkSimulation = null;
+
+async function loadNetworkGraph() {
+  let graph;
+  try { graph = await fetch("/api/seller-network").then(r => r.json()); }
+  catch(e) { return; }
+
+  const { nodes, edges } = graph;
+  if (!nodes.length) return;
+
+  document.getElementById("networkStats").textContent =
+    `${nodes.length} sellers · ${edges.length} connections`;
+
+  const svg = d3.select("#networkSvg");
+  svg.selectAll("*").remove();
+
+  const W = document.getElementById("networkSvg").clientWidth || 900;
+  const H = 380;
+  svg.attr("viewBox", `0 0 ${W} ${H}`);
+
+  const riskColor = {
+    Critical: "#e05656",
+    High:     "#f0922b",
+    Medium:   "#c9a84c",
+    Low:      "#2ec887"
+  };
+  const riskGlow = {
+    Critical: "rgba(224,86,86,0.5)",
+    High:     "rgba(240,146,43,0.4)",
+    Medium:   "rgba(201,168,76,0.35)",
+    Low:      "rgba(46,200,135,0.3)"
+  };
+
+  // Define SVG filters for glow effects
+  const defs = svg.append("defs");
+  ["Critical","High","Medium","Low"].forEach(tier => {
+    const filter = defs.append("filter").attr("id", `glow-${tier}`).attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+    filter.append("feGaussianBlur").attr("stdDeviation", tier === "Critical" ? 4 : tier === "High" ? 3 : 2).attr("result", "blur");
+    const merge = filter.append("feMerge");
+    merge.append("feMergeNode").attr("in", "blur");
+    merge.append("feMergeNode").attr("in", "SourceGraphic");
+  });
+
+  // Subtle dot-grid background
+  const pattern = defs.append("pattern").attr("id","dotgrid").attr("width",24).attr("height",24).attr("patternUnits","userSpaceOnUse");
+  pattern.append("circle").attr("cx",12).attr("cy",12).attr("r",0.7).attr("fill","rgba(255,255,255,0.06)");
+  svg.append("rect").attr("width",W).attr("height",H).attr("fill","url(#dotgrid)");
+
+  // Scale node radius — smaller range for cleaner look
+  const maxListings = Math.max(...nodes.map(n => n.listing_count), 1);
+  const rScale = d3.scaleSqrt().domain([1, maxListings]).range([5, 20]);
+
+  const maxStr = Math.max(...edges.map(e => e.strength), 1);
+
+  if (_networkSimulation) _networkSimulation.stop();
+
+  _networkSimulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges)
+      .id(d => d.id)
+      .distance(d => 55 - (d.strength / maxStr) * 25)
+      .strength(d => 0.15 + (d.strength / maxStr) * 0.45))
+    .force("charge", d3.forceManyBody().strength(-120))
+    .force("center", d3.forceCenter(W / 2, H / 2))
+    .force("x", d3.forceX(W / 2).strength(0.04))
+    .force("y", d3.forceY(H / 2).strength(0.04))
+    .force("collision", d3.forceCollide().radius(d => rScale(d.listing_count) + 5));
+
+  // Edges — gold for shared-SKU, subtle white for co-location
+  const link = svg.append("g")
+    .selectAll("line")
+    .data(edges)
+    .join("line")
+    .attr("stroke", d => d.shared_skus > 1 ? "rgba(201,168,76,0.45)" : "rgba(255,255,255,0.07)")
+    .attr("stroke-width", d => d.shared_skus > 1 ? 1.5 : 0.8)
+    .attr("stroke-dasharray", d => d.shared_skus > 1 ? "none" : "3,3");
+
+  // Node groups
+  const node = svg.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .style("cursor", "pointer")
+    .call(d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) _networkSimulation.alphaTarget(0.2).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag",  (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end",   (event, d) => {
+        if (!event.active) _networkSimulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+
+  // Outer pulse ring for Critical + High nodes
+  node.filter(d => d.risk === "Critical" || d.risk === "High")
+    .append("circle")
+    .attr("r", d => rScale(d.listing_count) + 5)
+    .attr("fill", "none")
+    .attr("stroke", d => riskColor[d.risk])
+    .attr("stroke-width", 1)
+    .attr("opacity", 0.3)
+    .attr("filter", d => `url(#glow-${d.risk})`);
+
+  // Main filled circle with glow
+  node.append("circle")
+    .attr("r", d => rScale(d.listing_count))
+    .attr("fill", d => riskColor[d.risk] + "dd")
+    .attr("stroke", d => riskColor[d.risk])
+    .attr("stroke-width", 1.5)
+    .attr("filter", d => `url(#glow-${d.risk})`);
+
+  // Count label inside larger nodes
+  node.filter(d => d.listing_count >= 3)
+    .append("text")
+    .attr("dy", "0.35em")
+    .attr("text-anchor", "middle")
+    .attr("font-family", "DM Mono, monospace")
+    .attr("font-size", d => d.listing_count >= 5 ? "9px" : "7px")
+    .attr("fill", "rgba(255,255,255,0.9)")
+    .attr("font-weight", "500")
+    .attr("pointer-events", "none")
+    .text(d => d.listing_count);
+
+  // Tooltip
+  const tooltip = document.getElementById("networkTooltip");
+  node
+    .on("mouseover", (event, d) => {
+      const flagPct = d.listing_count > 0 ? Math.round((d.flagged_count / d.listing_count) * 100) : 0;
+      tooltip.style.display = "block";
+      tooltip.innerHTML = `
+        <div style="color:${riskColor[d.risk]};font-weight:500;margin-bottom:5px;font-size:11px;">${d.risk} Risk</div>
+        <div style="color:var(--text-primary);margin-bottom:2px;">${d.name}</div>
+        <div style="color:#525561;font-size:10px;">${d.platform}</div>
+        <div style="color:#525561;font-size:10px;margin-bottom:6px;">${d.region}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;">
+          <div style="color:#8a8c96;">Listings</div><div style="color:var(--text-primary);">${d.listing_count}</div>
+          <div style="color:#8a8c96;">Flagged</div><div style="color:${flagPct>50?"var(--red)":"var(--amber)"};">${d.flagged_count} (${flagPct}%)</div>
+          <div style="color:#8a8c96;">SKUs</div><div style="color:var(--text-primary);">${d.sku_count}</div>
+          <div style="color:#8a8c96;">Avg dev.</div><div style="color:var(--amber);">-${d.avg_deviation}%</div>
+        </div>
+      `;
+    })
+    .on("mousemove", (event) => {
+      tooltip.style.left = (event.clientX + 14) + "px";
+      tooltip.style.top  = (event.clientY - 10) + "px";
+    })
+    .on("mouseout", () => { tooltip.style.display = "none"; });
+
+  _networkSimulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    node.attr("transform", d =>
+      `translate(${Math.max(18, Math.min(W-18, d.x))},${Math.max(18, Math.min(H-18, d.y))})`
+    );
+  });
+}
+
+/* ── LAST SCANNED META ────────────────────────────────────────────────────── */
+function updateScanMeta(scanTime) {
+  const el = document.getElementById("scanMeta");
+  if (!el) return;
+  const stored = scanTime || localStorage.getItem("lvmh_last_scan");
+  if (stored) {
+    el.innerHTML = `<span class="scan-live-dot"></span>Last scanned: ${stored}`;
+  } else {
+    el.innerHTML = `<span class="scan-live-dot"></span>System Active`;
+  }
+}
+
+/* ── INIT ────────────────────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", async () => {
+  updateScanMeta();
+  await loadAll();
+  loadPriceGapChart();
+  loadPlatformChart();
+  loadMaisonChart();
+  loadRiskLadderChart();
+  loadTrendChart();
+  loadNetworkGraph();
+});
+</script>
+
+</body>
+</html>

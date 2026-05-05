@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LVMH · Marketplace Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-deep: #06090f; --bg-card: #0c111c; --bg-header: #080d16;
+      --border: rgba(255,255,255,0.055); --border-accent: rgba(201,168,76,0.25);
+      --gold: #c9a84c; --gold-light: #e2c272; --gold-dim: rgba(201,168,76,0.15);
+      --red: #e05656; --red-dim: rgba(224,86,86,0.15);
+      --amber: #f0922b; --amber-dim: rgba(240,146,43,0.15);
+      --green: #2ec887; --green-dim: rgba(46,200,135,0.12);
+      --blue: #4a90d9; --blue-dim: rgba(74,144,217,0.12);
+      --text-primary: #e8e4da; --text-secondary: #8a8c96; --text-muted: #525561;
+      --font-display: 'Playfair Display',serif;
+      --font-mono: 'DM Mono',monospace;
+      --font-body: 'Plus Jakarta Sans',sans-serif;
+      --radius-sm: 6px; --radius-md: 10px;
+    }
+    *,*::before,*::after { box-sizing:border-box;margin:0;padding:0; }
+    body { font-family:var(--font-body);background:var(--bg-deep);color:var(--text-primary);min-height:100vh; }
+
+    .app-shell { display:flex;min-height:100vh; }
+
+    /* Sidebar (same as dashboard) */
+    .sidebar { width:240px;min-height:100vh;background:var(--bg-header);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100; }
+    .sidebar-brand { padding:28px 24px 20px;border-bottom:1px solid var(--border); }
+    .brand-mark { font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:0.12em;color:var(--text-primary);text-transform:uppercase; }
+    .brand-sub { font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-top:4px; }
+    .sidebar-nav { padding:16px 0;flex:1; }
+    .nav-section-label { font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);padding:12px 24px 6px; }
+    .nav-item { display:flex;align-items:center;gap:10px;padding:10px 24px;color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;cursor:pointer;border-left:2px solid transparent; }
+    .nav-item:hover { color:var(--text-primary);background:rgba(255,255,255,0.03); }
+    .nav-item.active { color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim); }
+    .sidebar-footer { padding:16px 24px;border-top:1px solid var(--border); }
+    .system-status { display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.05em; }
+    .status-dot { width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+    .main { margin-left:240px;flex:0 0 calc(100vw - 240px);width:calc(100vw - 240px);min-width:0;overflow-x:hidden; }
+    .topbar { height:60px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:50; }
+    .topbar-title { font-family:var(--font-display);font-size:16px;font-weight:500;color:var(--text-primary);letter-spacing:0.02em; }
+
+    .page-content { padding:28px 32px; }
+
+    /* Filters */
+    .filters-bar { display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap; }
+    .filter-select, .search-input {
+      background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);
+      font-family:var(--font-mono);font-size:11px;padding:8px 12px;border-radius:var(--radius-sm);
+      letter-spacing:0.04em;outline:none;transition:border-color .15s;
+    }
+    .filter-select:hover, .search-input:hover { border-color:rgba(255,255,255,0.1); }
+    .filter-select:focus, .search-input:focus { border-color:var(--border-accent); }
+    .search-input { min-width:200px; }
+    .filter-select option { background:#0c111c; }
+
+    .filter-btn {
+      display:flex;align-items:center;gap:6px;
+      background:var(--bg-card);border:1px solid var(--border);
+      color:var(--text-secondary);font-family:var(--font-mono);font-size:10px;
+      letter-spacing:0.08em;text-transform:uppercase;padding:8px 14px;
+      border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;
+    }
+    .filter-btn:hover { border-color:var(--border-accent);color:var(--gold); }
+    .filter-btn.active { background:var(--gold-dim);border-color:var(--border-accent);color:var(--gold); }
+
+    /* Table card */
+    .table-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden; }
+    .table-card-header { display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border); }
+    .table-title { font-family:var(--font-display);font-size:14px;font-weight:500;color:var(--text-primary); }
+    .count-badge { font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.06em; }
+
+    .full-table { width:100%;border-collapse:collapse; }
+    .full-table th { font-family:var(--font-mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-align:left;padding:11px 16px;border-bottom:1px solid var(--border);font-weight:400;cursor:pointer;user-select:none;transition:color .15s; }
+    .full-table th:hover { color:var(--text-secondary); }
+    .full-table td { font-size:12px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,0.025);color:var(--text-secondary);vertical-align:middle; }
+    .full-table tr:last-child td { border-bottom:none; }
+    .full-table tr:hover td { background:rgba(255,255,255,0.015); }
+    .mono { font-family:var(--font-mono);font-size:11px; }
+
+    .risk-badge { display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;padding:3px 8px;border-radius:3px;font-weight:500; }
+    .risk-critical { background:var(--red-dim);color:var(--red);border:1px solid rgba(224,86,86,0.2); }
+    .risk-high     { background:var(--amber-dim);color:var(--amber);border:1px solid rgba(240,146,43,0.2); }
+    .risk-medium   { background:var(--gold-dim);color:var(--gold);border:1px solid var(--border-accent); }
+    .risk-low      { background:var(--green-dim);color:var(--green);border:1px solid rgba(46,200,135,0.15); }
+
+    .status-badge { font-family:var(--font-mono);font-size:9px;padding:3px 7px;border-radius:3px;letter-spacing:0.06em; }
+    .status-active { color:var(--green);background:var(--green-dim);border:1px solid rgba(46,200,135,0.15); }
+    .status-review { color:var(--amber);background:var(--amber-dim);border:1px solid rgba(240,146,43,0.15); }
+    .status-removed { color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid var(--border); }
+
+    .confidence-bar { display:flex;align-items:center;gap:8px; }
+    .conf-bar-bg { width:50px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden; }
+    .conf-bar-fill { height:100%;border-radius:2px; }
+
+    /* Pagination */
+    .pagination { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border); }
+    .page-info { font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.05em; }
+    .page-btns { display:flex;gap:6px; }
+    .page-btn { background:var(--bg-card);border:1px solid var(--border);color:var(--text-secondary);font-family:var(--font-mono);font-size:10px;padding:5px 11px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s; }
+    .page-btn:hover { border-color:var(--border-accent);color:var(--gold); }
+    .page-btn:disabled { opacity:0.3;cursor:default; }
+    .page-btn.current { background:var(--gold-dim);border-color:var(--border-accent);color:var(--gold); }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08);border-radius:3px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">LVMH</div>
+      <div class="brand-sub">Grey Market Intelligence</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item" href="/">
+        <span>◈</span> Dashboard
+      </a>
+      <a class="nav-item active" href="/listings">
+        <span>◉</span> Marketplace Monitor
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Intelligence</div>
+      <a class="nav-item" href="/distributors">
+        <span>▣</span> Distributor Risk
+        <span style="margin-left:auto;font-size:9px;background:var(--green-dim);color:var(--green);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">LIVE</span>
+      </a>
+      <a class="nav-item" href="/analytics">
+        <span>◆</span> Price &amp; Allocation
+        <span style="margin-left:auto;font-size:9px;background:var(--green-dim);color:var(--green);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">LIVE</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <div class="status-dot"></div>
+        System Active · Phase 2
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:5px;">IS 534 · Group 1 · UIUC</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">Marketplace Monitor — Unauthorized Listing Detection</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);" id="scan-time">—</div>
+    </header>
+
+    <div class="page-content">
+      <div class="filters-bar">
+        <input class="search-input" type="text" id="searchInput" placeholder="Search SKU, seller, platform…" oninput="debounce(loadTable, 400)()">
+        <select class="filter-select" id="riskFilter" onchange="loadTable()">
+          <option value="all">All Risk Levels</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        <select class="filter-select" id="platformFilter" onchange="loadTable()">
+          <option value="all">All Platforms</option>
+        </select>
+        <button class="filter-btn" id="flaggedBtn" onclick="toggleFlagged()">
+          ⚑ Flagged Only
+        </button>
+      </div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-title">Detected Listings</div>
+          <div class="count-badge" id="countBadge">Loading…</div>
+        </div>
+
+        <table class="full-table">
+          <thead>
+            <tr>
+              <th>Listing ID</th>
+              <th>Maison · Product</th>
+              <th>Platform</th>
+              <th>Seller</th>
+              <th>Listed Price</th>
+              <th>vs. MSRP</th>
+              <th>Region</th>
+              <th>Risk</th>
+              <th>Confidence</th>
+              <th>Status</th>
+              <th>Detected</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="pagination">
+          <div class="page-info" id="pageInfo">—</div>
+          <div class="page-btns" id="pageBtns"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const fmt = (n) => "$" + new Intl.NumberFormat("en-US").format(Math.round(n));
+const fmtPct = (n) => (n > 0 ? "+" : "") + n.toFixed(1) + "%";
+
+let currentPage = 1;
+let flaggedOnly = false;
+
+function toggleFlagged() {
+  flaggedOnly = !flaggedOnly;
+  document.getElementById("flaggedBtn").classList.toggle("active", flaggedOnly);
+  currentPage = 1;
+  loadTable();
+}
+
+let debounceTimer;
+function debounce(fn, delay) {
+  return function(...args) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+async function loadPlatforms() {
+  const data = await fetch("/api/charts/platform-distribution").then(r => r.json());
+  const sel = document.getElementById("platformFilter");
+  data.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.platform;
+    opt.textContent = d.platform;
+    sel.appendChild(opt);
+  });
+}
+
+function riskBadge(level) {
+  const cls = { Critical:"risk-critical", High:"risk-high", Medium:"risk-medium", Low:"risk-low" }[level] || "risk-low";
+  return `<span class="risk-badge ${cls}">${level}</span>`;
+}
+
+function statusBadge(status) {
+  const cls = { Active:"status-active", "Under Review":"status-review", Removed:"status-removed" }[status] || "status-active";
+  return `<span class="status-badge ${cls}">${status}</span>`;
+}
+
+function confBar(conf) {
+  const pct = Math.round(conf * 100);
+  const col = conf > 0.8 ? "#e05656" : conf > 0.6 ? "#f0922b" : conf > 0.4 ? "#c9a84c" : "#2ec887";
+  return `<div class="confidence-bar">
+    <div class="conf-bar-bg"><div class="conf-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+    <span class="mono" style="color:${col};font-size:10px;">${pct}%</span>
+  </div>`;
+}
+
+async function loadTable() {
+  const search = document.getElementById("searchInput").value;
+  const risk = document.getElementById("riskFilter").value;
+  const platform = document.getElementById("platformFilter").value;
+
+  const params = new URLSearchParams({
+    page: currentPage, per_page: 20,
+    flagged: flaggedOnly ? "true" : "false",
+    risk: risk || "all",
+    platform: platform || "all",
+    search: search || "",
+  });
+
+  const data = await fetch(`/api/listings?${params}`).then(r => r.json());
+  const tbody = document.getElementById("tableBody");
+
+  tbody.innerHTML = data.listings.map(l => `
+    <tr>
+      <td><span class="mono" style="color:var(--text-muted);font-size:10px;">${l.listing_id}</span></td>
+      <td>
+        <div style="font-size:12px;color:var(--text-primary);font-weight:500;">${l.maison}</div>
+        <div class="mono" style="color:var(--text-muted);font-size:10px;">${l.product_name.length > 22 ? l.product_name.slice(0,20)+"…" : l.product_name}</div>
+      </td>
+      <td><span style="font-size:11px;">${l.platform.length > 18 ? l.platform.slice(0,16)+"…" : l.platform}</span></td>
+      <td>
+        <div class="mono" style="font-size:10px;color:var(--text-muted);">${l.seller_name}</div>
+      </td>
+      <td><span class="mono" style="color:var(--text-primary);">${fmt(l.listed_price)}</span></td>
+      <td>
+        <span class="mono" style="color:${l.price_deviation_pct < -20 ? 'var(--red)' : l.price_deviation_pct < -10 ? 'var(--amber)' : 'var(--text-secondary)'};">
+          ${fmtPct(l.price_deviation_pct)}
+        </span>
+      </td>
+      <td><span style="font-size:11px;">${l.region}</span></td>
+      <td>${riskBadge(l.risk_level)}</td>
+      <td>${confBar(l.confidence)}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td><span class="mono" style="font-size:10px;color:var(--text-muted);">${l.detection_timestamp.split(" ")[0]}</span></td>
+    </tr>
+  `).join("");
+
+  document.getElementById("countBadge").textContent = `${data.total.toLocaleString()} listings · Page ${data.current_page} of ${data.pages}`;
+  document.getElementById("pageInfo").textContent = `Showing ${((currentPage - 1) * 20) + 1}–${Math.min(currentPage * 20, data.total)} of ${data.total.toLocaleString()}`;
+
+  // Pagination buttons
+  const pageBtns = document.getElementById("pageBtns");
+  pageBtns.innerHTML = `
+    <button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""}>← Prev</button>
+    <button class="page-btn current">${currentPage}</button>
+    <button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage >= data.pages ? "disabled" : ""}>Next →</button>
+  `;
+}
+
+function goPage(n) {
+  if (n < 1) return;
+  currentPage = n;
+  loadTable();
+}
+
+// Clock
+function updateClock() {
+  document.getElementById("scan-time").textContent =
+    "Last scan: " + new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+setInterval(updateClock, 60000);
+updateClock();
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadPlatforms();
+  loadTable();
+});
+</script>
+</body>
+</html>

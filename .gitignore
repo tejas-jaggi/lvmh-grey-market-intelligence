@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments and local dependency caches
+.venv/
+.deps/
+
+# Local database/runtime files
+instance/*.db
+*.sqlite
+*.sqlite3
+
+# Local secrets
+.env
+.env.*
+
+# Scratch files and logs
+.tmp/
+tmp_*.log
+*.log
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

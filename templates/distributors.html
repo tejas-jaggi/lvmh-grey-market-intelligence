@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LVMH · Distributor Risk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-deep: #06090f;
+      --bg-card: #0c111c;
+      --bg-card-hover: #111929;
+      --bg-header: #080d16;
+      --border: rgba(255,255,255,0.055);
+      --border-accent: rgba(201,168,76,0.25);
+      --gold: #c9a84c;
+      --gold-light: #e2c272;
+      --gold-dim: rgba(201,168,76,0.15);
+      --red: #e05656;
+      --red-dim: rgba(224,86,86,0.15);
+      --amber: #f0922b;
+      --amber-dim: rgba(240,146,43,0.15);
+      --green: #2ec887;
+      --green-dim: rgba(46,200,135,0.12);
+      --blue: #4a90d9;
+      --blue-dim: rgba(74,144,217,0.12);
+      --text-primary: #e8e4da;
+      --text-secondary: #8a8c96;
+      --text-muted: #525561;
+      --font-display: 'Playfair Display', serif;
+      --font-mono: 'DM Mono', monospace;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.55;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .app-shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--bg-header);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 100;
+    }
+    .sidebar-brand { padding: 28px 24px 20px; border-bottom: 1px solid var(--border); }
+    .brand-mark {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .sidebar-nav { padding: 16px 0; flex: 1; }
+    .nav-section-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 24px 6px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); }
+    .nav-item.active {
+      color: var(--gold);
+      border-left-color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .nav-item-tag {
+      margin-left: auto;
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .tag-live {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(46,200,135,0.12);
+    }
+    .tag-soon {
+      background: var(--amber-dim);
+      color: var(--amber);
+    }
+    .tag-future {
+      background: var(--blue-dim);
+      color: var(--blue);
+    }
+    .sidebar-footer { padding: 16px 24px; border-top: 1px solid var(--border); }
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .main { margin-left: 240px; flex: 0 0 calc(100vw - 240px); width: calc(100vw - 240px); min-width: 0; min-height: 100vh; overflow-x: hidden; }
+    .topbar {
+      height: 60px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: 0.02em;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .timestamp {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--gold-dim);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: rgba(201,168,76,0.25); color: var(--gold-light); }
+
+    .page-content { padding: 28px 32px; }
+
+    .hero-card {
+      background:
+        radial-gradient(circle at top right, rgba(201,168,76,0.11), transparent 34%),
+        linear-gradient(135deg, rgba(12,17,28,0.98), rgba(9,13,21,0.96));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.015), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 8s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes shimmer {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(100%); }
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .hero-copy {
+      max-width: 900px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .hero-meta {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 14px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+    }
+    .kpi-card.gold::before { background: var(--gold); }
+    .kpi-card.red::before { background: var(--red); }
+    .kpi-card.amber::before { background: var(--amber); }
+    .kpi-card.green::before { background: var(--green); }
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 30px;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+    .kpi-card.gold .kpi-value { color: var(--gold-light); }
+    .kpi-card.red .kpi-value { color: var(--red); }
+    .kpi-card.amber .kpi-value { color: var(--amber); }
+    .kpi-card.green .kpi-value { color: var(--green); }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 18px 20px 0;
+    }
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .card-meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--border-accent);
+      background: var(--gold-dim);
+      color: var(--gold);
+    }
+    .chart-wrap { padding: 16px 18px 18px; min-height: 280px; }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .desk-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      position: sticky;
+      top: 84px;
+    }
+    .desk-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .desk-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .desk-copy {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .filters {
+      padding: 14px 20px;
+      display: grid;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-input,
+    .filter-select {
+      width: 100%;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      outline: none;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+    .filter-select option { background: #0c111c; }
+    .desk-list {
+      max-height: calc(100vh - 330px);
+      overflow-y: auto;
+    }
+    .desk-item {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .desk-item:hover { background: rgba(255,255,255,0.02); }
+    .desk-item.active {
+      background: linear-gradient(90deg, rgba(201,168,76,0.11), transparent 80%);
+      box-shadow: inset 2px 0 0 var(--gold);
+    }
+    .desk-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .desk-item-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+    .desk-item-meta,
+    .desk-item-score {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .desk-item-tier {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+    .tier-monitor { background: var(--green-dim); color: var(--green); border: 1px solid rgba(46,200,135,0.15); }
+    .tier-flag { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border-accent); }
+    .tier-audit { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,146,43,0.2); }
+    .tier-hold { background: var(--red-dim); color: var(--red); border: 1px solid rgba(224,86,86,0.2); }
+
+    .detail-shell { display: grid; gap: 14px; }
+    .detail-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .detail-name {
+      font-family: var(--font-display);
+      font-size: 22px;
+      line-height: 1.3;
+    }
+    .detail-subline {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+    .detail-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .meta-pill {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .score-hero {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .score-panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+    .score-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .score-number {
+      font-family: var(--font-mono);
+      font-size: 54px;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .score-tier {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .score-scale {
+      margin-top: 14px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      overflow: hidden;
+    }
+    .score-scale-fill { height: 100%; border-radius: 999px; }
+    .detail-narrative {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric-tile {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 14px 12px;
+      background: rgba(255,255,255,0.015);
+    }
+    .metric-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      color: var(--text-primary);
+    }
+    .metric-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+    .section-note {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.7;
+      margin-top: -4px;
+      margin-bottom: 14px;
+    }
+    .driver-list { display: grid; gap: 12px; }
+    .driver-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+    .driver-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .driver-label { font-size: 12px; color: var(--text-primary); font-weight: 600; }
+    .driver-score {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+    .driver-bar {
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .driver-fill { height: 100%; border-radius: 999px; }
+    .driver-detail {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--gold);
+      margin-bottom: 5px;
+    }
+    .driver-note { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+
+    .peer-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .peer-stat {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.015);
+    }
+    .peer-stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .peer-stat-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      color: var(--text-primary);
+    }
+    .peer-stat-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .action-list,
+    .signal-list { display: grid; gap: 10px; }
+    .action-item,
+    .signal-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.015);
+    }
+    .action-top,
+    .signal-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .action-title,
+    .signal-title {
+      font-size: 12px;
+      color: var(--text-primary);
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    .action-owner,
+    .signal-metric {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+    .action-detail,
+    .signal-detail {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .action-meta,
+    .signal-meta {
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .signal-severity {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state {
+      padding: 26px 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .empty-state strong { color: var(--text-primary); }
+
+    .model-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px dashed rgba(201,168,76,0.22);
+      background: rgba(201,168,76,0.06);
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    .mono { font-family: var(--font-mono); }
+    canvas { max-height: 250px; }
+
+    @media (max-width: 1260px) {
+      .workspace-grid,
+      .detail-grid,
+      .insight-grid,
+      .score-hero { grid-template-columns: 1fr; }
+      .desk-card { position: static; }
+    }
+    @media (max-width: 980px) {
+      .sidebar { position: static; width: 100%; min-height: auto; }
+      .main { margin-left: 0; }
+      .app-shell { flex-direction: column; }
+      .kpi-grid,
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .page-content,
+      .topbar { padding-left: 18px; padding-right: 18px; }
+      .kpi-grid,
+      .metric-grid,
+      .peer-grid { grid-template-columns: 1fr; }
+      .topbar { height: auto; padding-top: 14px; padding-bottom: 14px; align-items: flex-start; flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">LVMH</div>
+      <div class="brand-sub">Grey Market Intelligence</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item" href="/">
+        <span>&#9674;</span> Dashboard
+      </a>
+      <a class="nav-item" href="/listings">
+        <span>&#9673;</span> Marketplace Monitor
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Intelligence</div>
+      <a class="nav-item active" href="/distributors">
+        <span>[ ]</span> Distributor Risk
+        <span class="nav-item-tag tag-live">Live</span>
+      </a>
+      <a class="nav-item" href="/analytics">
+        <span>&lt;&gt;</span> Price &amp; Allocation
+        <span class="nav-item-tag tag-live">Live</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span>O</span> Allocation Intel
+        <span class="nav-item-tag tag-future">PH3</span>
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Analytics</div>
+      <a class="nav-item" href="#">
+        <span>=</span> Deep Analytics
+        <span class="nav-item-tag tag-future">PH3</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <div class="status-dot"></div>
+        System Active · Phase 2
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:5px;">IS 534 · Group 1 · UIUC</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">Distributor Risk · Governance & Allocation Intelligence</div>
+      <div class="topbar-right">
+        <div class="timestamp" id="liveClock">--</div>
+        <button class="refresh-btn" id="refreshBtn" onclick="refreshRiskDesk()">Refresh Risk Desk</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <section class="hero-card">
+        <div class="hero-title">Explainable distributor governance for grey market prevention</div>
+        <div class="hero-copy">
+          This Phase 2 workspace translates the class recommendation into a credible operating model:
+          distributors are ranked using order pressure, price-gap exposure, compliance history, and
+          regional grey market signals. The goal is not perfect prediction. The goal is faster, explainable
+          intervention before leakage becomes visible at scale.
+        </div>
+        <div class="hero-meta">
+          <span>Simulated governance model</span>
+          <span>|</span>
+          <span>Human-in-the-loop</span>
+          <span>|</span>
+          <span>Regional evidence linked to partner risk</span>
+        </div>
+      </section>
+
+      <section class="kpi-grid" id="summaryCards"></section>
+
+      <section class="insight-grid">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Regional Exposure Hotspots</div>
+              <div class="card-meta">Average partner risk · marketplace pressure · alert density</div>
+            </div>
+            <div class="badge">Region view</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="regionExposureChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Risk Tier Distribution</div>
+              <div class="card-meta">Monitor through hold shipment</div>
+            </div>
+            <div class="badge">Score ladder</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="tierDistributionChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <aside class="desk-card">
+          <div class="desk-header">
+            <div class="desk-title">Distributor Desk</div>
+            <div class="desk-copy">
+              Search, filter, and inspect partner risk one by one. Click any distributor to open the explainable evidence view.
+            </div>
+          </div>
+          <div class="filters">
+            <input class="filter-input" id="searchInput" type="text" placeholder="Search distributor, region, country..." oninput="debounceLoadDistributors()" />
+            <select class="filter-select" id="tierFilter" onchange="loadDistributorList()">
+              <option value="all">All tiers</option>
+              <option value="Hold Shipment">Hold Shipment</option>
+              <option value="Trigger Audit">Trigger Audit</option>
+              <option value="Flag for Review">Flag for Review</option>
+              <option value="Monitor">Monitor</option>
+            </select>
+          </div>
+          <div class="desk-list" id="distributorList"></div>
+        </aside>
+
+        <section class="detail-shell">
+          <div class="detail-card" id="detailCard">
+            <div class="empty-state">
+              <strong>Loading distributor profile...</strong><br />
+              Pulling model inputs, peer context, and regional signals.
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+const GOLD = "#c9a84c";
+const RED = "#e05656";
+const AMBER = "#f0922b";
+const GREEN = "#2ec887";
+const BLUE = "#4a90d9";
+const SLATE = "#3a4a6a";
+
+Chart.defaults.color = "#525561";
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 10;
+
+let selectedDistributorId = null;
+let distributorListCache = [];
+let summaryCache = null;
+let regionExposureChart = null;
+let tierDistributionChart = null;
+let distributorSearchTimer = null;
+
+const fmt = (n) => new Intl.NumberFormat("en-US").format(Math.round(n));
+const fmtUSD = (n) => "$" + new Intl.NumberFormat("en-US", {
+  notation: n > 999999 ? "compact" : "standard",
+  maximumFractionDigits: 1
+}).format(n || 0);
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("liveClock").textContent =
+    now.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+    " · " +
+    now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function tierClass(tier) {
+  if (tier === "Hold Shipment") return "tier-hold";
+  if (tier === "Trigger Audit") return "tier-audit";
+  if (tier === "Flag for Review") return "tier-flag";
+  return "tier-monitor";
+}
+
+function scoreColor(score) {
+  if (score >= 86) return RED;
+  if (score >= 66) return AMBER;
+  if (score >= 41) return GOLD;
+  return GREEN;
+}
+
+function severityClass(level) {
+  if (level === "Critical") return "tier-hold";
+  if (level === "High") return "tier-audit";
+  if (level === "Medium") return "tier-flag";
+  return "tier-monitor";
+}
+
+function debounceLoadDistributors() {
+  clearTimeout(distributorSearchTimer);
+  distributorSearchTimer = setTimeout(() => loadDistributorList(), 250);
+}
+
+async function refreshRiskDesk() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "Refreshing...";
+  await loadSummary();
+  await loadDistributorList();
+  if (selectedDistributorId) {
+    await loadDistributorProfile(selectedDistributorId);
+  }
+  btn.disabled = false;
+  btn.textContent = "Refresh Risk Desk";
+}
+
+async function loadSummary() {
+  summaryCache = await fetch("/api/distributors/summary").then(r => r.json());
+  renderSummaryCards(summaryCache);
+  renderRegionExposureChart(summaryCache.region_exposure || []);
+  renderTierDistributionChart(summaryCache.tier_distribution || []);
+}
+
+function renderSummaryCards(summary) {
+  const hotspot = summary.highest_risk_region || {};
+  document.getElementById("summaryCards").innerHTML = `
+    <div class="kpi-card gold">
+      <div class="kpi-label">Distributors Monitored</div>
+      <div class="kpi-value">${fmt(summary.total_distributors)}</div>
+      <div class="kpi-sub">${fmt(summary.watchlist_count)} on elevated watchlist</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Hold Shipment</div>
+      <div class="kpi-value">${fmt(summary.hold_shipment_count)}</div>
+      <div class="kpi-sub">Partners above intervention threshold</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Average Risk Score</div>
+      <div class="kpi-value">${summary.avg_risk_score.toFixed(1)}</div>
+      <div class="kpi-sub">${summary.avg_price_gap_exposure.toFixed(1)}% average price-gap exposure</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Top Hotspot Region</div>
+      <div class="kpi-value" style="font-size:22px;">${hotspot.region || "N/A"}</div>
+      <div class="kpi-sub">${hotspot.avg_risk_score || 0} avg score · ${hotspot.open_alerts || 0} open alerts</div>
+    </div>
+  `;
+}
+
+function renderRegionExposureChart(data) {
+  const labels = data.slice(0, 8).map(row => row.region);
+  const riskScores = data.slice(0, 8).map(row => row.avg_risk_score);
+  const alerts = data.slice(0, 8).map(row => row.open_alerts);
+  const flaggedListings = data.slice(0, 8).map(row => row.flagged_listings);
+
+  if (regionExposureChart) regionExposureChart.destroy();
+  regionExposureChart = new Chart(document.getElementById("regionExposureChart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Avg Risk Score",
+          data: riskScores,
+          backgroundColor: "rgba(201,168,76,0.65)",
+          borderColor: GOLD,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: "y"
+        },
+        {
+          label: "Open Alerts",
+          data: alerts,
+          backgroundColor: "rgba(224,86,86,0.35)",
+          borderColor: RED,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: { boxWidth: 8, boxHeight: 8, padding: 12, color: "#8a8c96" }
+        },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+          callbacks: {
+            afterBody: (items) => {
+              const row = data[items[0].dataIndex];
+              return [
+                `${row.flagged_listings} flagged listings`,
+                `${row.high_risk_count} high-risk distributors`,
+                `${row.avg_anomaly_gap_pct}% average anomaly gap`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#6f7380", font: { size: 9 } } },
+        y: {
+          grid: { color: "rgba(255,255,255,0.025)" },
+          ticks: { color: "#6f7380" },
+          suggestedMax: 100
+        },
+        y1: {
+          position: "right",
+          grid: { display: false },
+          ticks: { color: "#6f7380" },
+          suggestedMax: Math.max(6, ...alerts)
+        }
+      }
+    }
+  });
+}
+
+function renderTierDistributionChart(data) {
+  const palette = [GREEN, GOLD, AMBER, RED];
+  if (tierDistributionChart) tierDistributionChart.destroy();
+  tierDistributionChart = new Chart(document.getElementById("tierDistributionChart"), {
+    type: "doughnut",
+    data: {
+      labels: data.map(row => row.tier),
+      datasets: [{
+        data: data.map(row => row.count),
+        backgroundColor: palette.map(color => color + "d9"),
+        borderColor: "#0c111c",
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "62%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { boxWidth: 8, boxHeight: 8, padding: 14, color: "#8a8c96" }
+        },
+        tooltip: {
+          backgroundColor: "#0c111c",
+          borderColor: "rgba(255,255,255,0.06)",
+          borderWidth: 1,
+          titleColor: "#e8e4da",
+          bodyColor: "#8a8c96",
+          callbacks: {
+            label: (ctx) => `${ctx.label}: ${ctx.raw} distributors`
+          }
+        }
+      }
+    }
+  });
+}
+
+async function loadDistributorList() {
+  const search = document.getElementById("searchInput").value.trim();
+  const tier = document.getElementById("tierFilter").value;
+  const params = new URLSearchParams({ search, tier, sort: "risk_score" });
+
+  distributorListCache = await fetch(`/api/distributors?${params}`).then(r => r.json());
+  renderDistributorList(distributorListCache);
+
+  if (!distributorListCache.length) {
+    selectedDistributorId = null;
+    document.getElementById("detailCard").innerHTML = `
+      <div class="empty-state">
+        <strong>No distributors match the current filter.</strong><br />
+        Try clearing search or switching to a broader risk tier.
+      </div>
+    `;
+    return;
+  }
+
+  const selectedStillVisible = distributorListCache.some(item => item.distributor_id === selectedDistributorId);
+  if (!selectedDistributorId || !selectedStillVisible) {
+    selectedDistributorId = distributorListCache[0].distributor_id;
+  }
+  highlightSelectedDistributor();
+  await loadDistributorProfile(selectedDistributorId);
+}
+
+function renderDistributorList(items) {
+  const list = document.getElementById("distributorList");
+  list.innerHTML = items.map(item => `
+    <button class="desk-item" data-id="${item.distributor_id}" onclick="selectDistributor('${item.distributor_id}')">
+      <div class="desk-item-top">
+        <div>
+          <div class="desk-item-name">${item.name}</div>
+          <div class="desk-item-meta">${item.country} · ${item.region}</div>
+        </div>
+        <div class="desk-item-score" style="color:${scoreColor(item.risk_score)};">${item.risk_score.toFixed(1)}</div>
+      </div>
+      <div class="desk-item-tier ${tierClass(item.risk_tier)}">${item.risk_tier}</div>
+    </button>
+  `).join("");
+}
+
+function highlightSelectedDistributor() {
+  document.querySelectorAll(".desk-item").forEach(node => {
+    node.classList.toggle("active", node.dataset.id === selectedDistributorId);
+  });
+}
+
+async function selectDistributor(distributorId) {
+  selectedDistributorId = distributorId;
+  highlightSelectedDistributor();
+  await loadDistributorProfile(distributorId);
+}
+
+async function loadDistributorProfile(distributorId) {
+  const profile = await fetch(`/api/distributors/${distributorId}/profile`).then(r => r.json());
+  renderDistributorProfile(profile);
+}
+
+function renderDistributorProfile(profile) {
+  const distributor = profile.distributor;
+  const peer = profile.peer_context;
+  const scoreColorValue = scoreColor(distributor.risk_score);
+  const actionsHtml = profile.recommended_actions.map(action => `
+    <div class="action-item">
+      <div class="action-top">
+        <div class="action-title">${action.title}</div>
+        <div class="action-owner">${action.owner}</div>
+      </div>
+      <div class="action-detail">${action.reason}</div>
+      <div class="action-meta">${action.timing}</div>
+    </div>
+  `).join("");
+
+  const signalsHtml = profile.regional_signals.length
+    ? profile.regional_signals.map(signal => `
+      <div class="signal-item">
+        <div class="signal-severity ${severityClass(signal.severity)}">${signal.type} · ${signal.severity}</div>
+        <div class="signal-top">
+          <div class="signal-title">${signal.title}</div>
+          <div class="signal-metric">${signal.metric}</div>
+        </div>
+        <div class="signal-detail">${signal.detail}</div>
+        <div class="signal-meta">${signal.subtitle}</div>
+      </div>
+    `).join("")
+    : `<div class="empty-state"><strong>No regional signals available.</strong><br />This distributor currently has no linked alert, listing, or anomaly evidence in the model view.</div>`;
+
+  const driversHtml = profile.score_drivers.map(driver => `
+    <div class="driver-item">
+      <div class="driver-top">
+        <div class="driver-label">${driver.label}</div>
+        <div class="driver-score">${driver.value.toFixed(1)} / 100</div>
+      </div>
+      <div class="driver-bar">
+        <div class="driver-fill" style="width:${driver.value}%;background:${scoreColorValue};"></div>
+      </div>
+      <div class="driver-detail">${driver.detail}</div>
+      <div class="driver-note">${driver.note}</div>
+    </div>
+  `).join("");
+
+  document.getElementById("detailCard").innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-name">${distributor.name}</div>
+        <div class="detail-subline">${profile.narrative}</div>
+        <div class="detail-meta-row">
+          <span class="meta-pill">${distributor.distributor_id}</span>
+          <span class="meta-pill">${distributor.country} · ${distributor.region}</span>
+          <span class="meta-pill">Tier ${profile.model_inputs.tier}</span>
+        </div>
+      </div>
+      <div class="desk-item-tier ${tierClass(distributor.risk_tier)}">${distributor.risk_tier}</div>
+    </div>
+
+    <div class="score-hero">
+      <div class="score-panel">
+        <div class="score-label">Distributor risk score</div>
+        <div class="score-number" style="color:${scoreColorValue};">${distributor.risk_score.toFixed(1)}</div>
+        <div class="score-tier">${profile.risk_band} signal band</div>
+        <div class="score-scale">
+          <div class="score-scale-fill" style="width:${distributor.risk_score}%;background:${scoreColorValue};"></div>
+        </div>
+      </div>
+      <div class="detail-narrative">
+        This profile combines supply-side risk indicators with regional grey market pressure to prioritize
+        audits and shipment controls. It is intentionally explainable: every risk signal shown below ties back
+        to a concrete driver, a regional market symptom, or a recommended governance action.
+      </div>
+    </div>
+
+    <div class="metric-grid" style="margin-bottom:18px;">
+      <div class="metric-tile">
+        <div class="metric-label">Allocation volume</div>
+        <div class="metric-value">${fmt(profile.model_inputs.allocation_volume)}</div>
+        <div class="metric-hint">Units allocated to this partner</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Sales velocity</div>
+        <div class="metric-value">${profile.model_inputs.sales_velocity.toFixed(1)}</div>
+        <div class="metric-hint">Units per month proxy</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Order / Sales ratio</div>
+        <div class="metric-value">${profile.model_inputs.order_to_sales_ratio.toFixed(2)}x</div>
+        <div class="metric-hint">Core leakage pressure indicator</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Compliance flags</div>
+        <div class="metric-value">${profile.model_inputs.compliance_flags}</div>
+        <div class="metric-hint">${profile.model_inputs.price_gap_exposure.toFixed(1)}% price-gap exposure</div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-card" style="padding:0;border:none;background:transparent;">
+        <div class="section-title">Explainable score drivers</div>
+        <div class="section-note">
+          These driver contributions are synthetic but transparent. They mirror the logic proposed in your class materials:
+          order anomalies, price arbitrage pressure, governance history, and allocation scale.
+        </div>
+        <div class="driver-list">${driversHtml}</div>
+      </div>
+
+      <div class="detail-card" style="padding:0;border:none;background:transparent;">
+        <div class="section-title">Regional peer context</div>
+        <div class="peer-grid">
+          <div class="peer-stat">
+            <div class="peer-stat-label">Regional rank</div>
+            <div class="peer-stat-value">#${peer.rank_in_region}</div>
+            <div class="peer-stat-hint">Out of ${peer.region_distributor_count} distributors in ${peer.region}</div>
+          </div>
+          <div class="peer-stat">
+            <div class="peer-stat-label">Risk percentile</div>
+            <div class="peer-stat-value">${peer.risk_percentile}%</div>
+            <div class="peer-stat-hint">Higher means this partner sits near the top of the risk stack</div>
+          </div>
+          <div class="peer-stat">
+            <div class="peer-stat-label">Regional average risk</div>
+            <div class="peer-stat-value">${peer.region_avg_risk_score.toFixed(1)}</div>
+            <div class="peer-stat-hint">${peer.region_high_risk_count} high-risk peers in the same region</div>
+          </div>
+          <div class="peer-stat">
+            <div class="peer-stat-label">Regional arbitrage</div>
+            <div class="peer-stat-value">${fmtUSD(peer.regional_arbitrage_usd)}</div>
+            <div class="peer-stat-hint">${peer.region_avg_anomaly_gap_pct.toFixed(1)}% avg anomaly gap</div>
+          </div>
+        </div>
+        <div class="peer-grid">
+          <div class="peer-stat">
+            <div class="peer-stat-label">Flagged listings</div>
+            <div class="peer-stat-value">${fmt(peer.region_flagged_listings)}</div>
+            <div class="peer-stat-hint">Marketplace listings in this distributor's region</div>
+          </div>
+          <div class="peer-stat">
+            <div class="peer-stat-label">Open alerts</div>
+            <div class="peer-stat-value">${fmt(peer.region_open_alerts)}</div>
+            <div class="peer-stat-hint">${peer.region_avg_price_gap_exposure.toFixed(1)}% average regional price-gap exposure</div>
+          </div>
+        </div>
+        <div class="model-note">
+          Model note: regional signals are being used as evidence context, not as proof of wrongdoing.
+          That keeps the prototype aligned with the adoption and trust concerns identified in your user analysis.
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid" style="margin-top:14px;">
+      <div class="detail-card" style="padding:0;border:none;background:transparent;">
+        <div class="section-title">Recommended actions</div>
+        <div class="action-list">${actionsHtml}</div>
+      </div>
+      <div class="detail-card" style="padding:0;border:none;background:transparent;">
+        <div class="section-title">Regional intelligence feed</div>
+        <div class="signal-list">${signalsHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadSummary();
+  await loadDistributorList();
+});
+</script>
+</body>
+</html>

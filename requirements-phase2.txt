@@ -1,0 +1,6 @@
+# Optional advanced ML runtime for Phase 2.
+# The prototype still runs without these packages because ml_engine.py
+# falls back to heuristic scoring when scikit-learn is unavailable.
+# If installation fails on a newer Python version, create a Python 3.12 venv
+# and install this file there for the true Isolation Forest path.
+scikit-learn>=1.4

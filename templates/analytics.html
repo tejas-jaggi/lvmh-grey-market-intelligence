@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LVMH · Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg-deep:#06090f;--bg-card:#0c111c;--bg-header:#080d16;
+      --border:rgba(255,255,255,0.055);--border-accent:rgba(201,168,76,0.25);
+      --gold:#c9a84c;--gold-light:#e2c272;--gold-dim:rgba(201,168,76,0.15);
+      --red:#e05656;--red-dim:rgba(224,86,86,0.15);
+      --amber:#f0922b;--amber-dim:rgba(240,146,43,0.15);
+      --green:#2ec887;--green-dim:rgba(46,200,135,0.12);
+      --blue:#4a90d9;--blue-dim:rgba(74,144,217,0.12);
+      --purple:#9b72e8;--purple-dim:rgba(155,114,232,0.12);
+      --text-primary:#e8e4da;--text-secondary:#8a8c96;--text-muted:#525561;
+      --font-display:'Playfair Display',serif;
+      --font-mono:'DM Mono',monospace;
+      --font-body:'Plus Jakarta Sans',sans-serif;
+      --radius-sm:6px;--radius-md:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text-primary);min-height:100vh;}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:0.55;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");z-index:0;}
+    .app-shell{display:flex;min-height:100vh;position:relative;z-index:1;}
+    .sidebar{width:240px;min-height:100vh;background:var(--bg-header);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;}
+    .sidebar-brand{padding:28px 24px 20px;border-bottom:1px solid var(--border);}
+    .brand-mark{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:0.12em;color:var(--text-primary);text-transform:uppercase;}
+    .brand-sub{font-family:var(--font-mono);font-size:9px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-top:4px;}
+    .sidebar-nav{padding:16px 0;flex:1;}
+    .nav-section-label{font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);padding:12px 24px 6px;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;cursor:pointer;border-left:2px solid transparent;}
+    .nav-item:hover{color:var(--text-primary);background:rgba(255,255,255,0.03);}
+    .nav-item.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim);}
+    .sidebar-footer{padding:16px 24px;border-top:1px solid var(--border);}
+    .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+    .main{margin-left:240px;flex:0 0 calc(100vw - 240px);width:calc(100vw - 240px);min-width:0;overflow-x:hidden;}
+    .topbar{height:60px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:50;}
+    .topbar-title{font-family:var(--font-display);font-size:16px;font-weight:500;letter-spacing:0.02em;}
+    .page-content{padding:28px 32px;}
+
+    /* KPI strip */
+    .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+    .kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px 20px;position:relative;overflow:hidden;animation:fade-up .4s ease both;}
+    .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--radius-md) var(--radius-md) 0 0;}
+    .kpi-card.gold::before{background:var(--gold);}
+    .kpi-card.red::before{background:var(--red);}
+    .kpi-card.amber::before{background:var(--amber);}
+    .kpi-card.purple::before{background:var(--purple);}
+    @keyframes fade-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .kpi-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:9px;}
+    .kpi-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;margin-bottom:5px;letter-spacing:-0.02em;}
+    .kpi-card.gold .kpi-value{color:var(--gold-light);}
+    .kpi-card.red .kpi-value{color:var(--red);}
+    .kpi-card.amber .kpi-value{color:var(--amber);}
+    .kpi-card.purple .kpi-value{color:var(--purple);}
+    .kpi-sub{font-size:11px;color:var(--text-secondary);}
+
+    /* Charts */
+    .charts-row{display:grid;gap:14px;margin-bottom:24px;}
+    .charts-row.two{grid-template-columns:1.2fr 1fr;}
+    .charts-row.three{grid-template-columns:1fr 1fr 1fr;}
+    .chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px 22px;}
+    .chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+    .chart-title{font-family:var(--font-display);font-size:13px;font-weight:500;}
+    .chart-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:3px;}
+    .badge{font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:3px;}
+    .badge-gold{background:var(--gold-dim);color:var(--gold);border:1px solid var(--border-accent);}
+    .badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,86,86,0.2);}
+    canvas{max-height:240px;}
+
+    /* Anomaly table */
+    .table-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin-bottom:24px;}
+    .table-card-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);}
+    .table-card-title{font-family:var(--font-display);font-size:14px;font-weight:500;}
+    .t{width:100%;border-collapse:collapse;}
+    .t th{font-family:var(--font-mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);text-align:left;padding:10px 16px;border-bottom:1px solid var(--border);font-weight:400;}
+    .t td{font-size:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.025);color:var(--text-secondary);vertical-align:middle;}
+    .t tr:last-child td{border-bottom:none;}
+    .t tr:hover td{background:rgba(255,255,255,0.015);}
+    .mono{font-family:var(--font-mono);font-size:11px;}
+
+    /* Severity badges */
+    .sev{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;padding:3px 8px;border-radius:3px;}
+    .sev-critical{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,86,86,0.2);}
+    .sev-high    {background:var(--amber-dim);color:var(--amber);border:1px solid rgba(240,146,43,0.2);}
+    .sev-medium  {background:var(--gold-dim);color:var(--gold);border:1px solid var(--border-accent);}
+    .sev-low     {background:var(--green-dim);color:var(--green);border:1px solid rgba(46,200,135,0.15);}
+
+    /* Scenario simulator */
+    .scenario-card{background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius-md);padding:24px 26px;margin-bottom:24px;position:relative;overflow:hidden;}
+    .scenario-card::before{content:'WHAT-IF SIMULATOR';position:absolute;top:14px;right:20px;font-family:var(--font-mono);font-size:8px;letter-spacing:0.2em;color:var(--gold);opacity:0.5;}
+    .scenario-title{font-family:var(--font-display);font-size:16px;font-weight:600;margin-bottom:6px;}
+    .scenario-desc{font-size:12px;color:var(--text-secondary);margin-bottom:24px;max-width:520px;}
+    .scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+    .sim-controls{display:flex;flex-direction:column;gap:18px;}
+    .slider-group{display:flex;flex-direction:column;gap:6px;}
+    .slider-label{display:flex;justify-content:space-between;align-items:center;}
+    .slider-name{font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);letter-spacing:0.06em;text-transform:uppercase;}
+    .slider-val{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--gold);}
+    input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,0.08);outline:none;}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 0 6px var(--gold-dim);}
+    .sim-output{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;display:flex;flex-direction:column;gap:14px;}
+    .sim-metric{display:flex;flex-direction:column;gap:4px;}
+    .sim-metric-label{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);}
+    .sim-metric-value{font-family:var(--font-mono);font-size:20px;font-weight:500;}
+    .sim-metric-change{font-size:11px;color:var(--text-secondary);}
+
+    /* Allocation heatmap */
+    .alloc-grid{display:grid;gap:3px;margin-top:4px;}
+    .alloc-row{display:grid;grid-template-columns:120px repeat(8,1fr);gap:3px;align-items:center;}
+    .alloc-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);text-align:right;padding-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .alloc-cell{height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;font-weight:500;cursor:default;transition:opacity .15s;}
+    .alloc-cell:hover{opacity:0.8;}
+    .alloc-header{display:grid;grid-template-columns:120px repeat(8,1fr);gap:3px;margin-bottom:4px;}
+    .alloc-h-label{font-family:var(--font-mono);font-size:8px;color:var(--text-muted);text-align:center;letter-spacing:0.05em;}
+
+    .decorative-line{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0 0 24px;}
+    .section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
+    .section-title{font-family:var(--font-display);font-size:15px;font-weight:600;}
+    .section-meta{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;}
+
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">LVMH</div>
+      <div class="brand-sub">Grey Market Intelligence</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item" href="/"><span>◈</span> Dashboard</a>
+      <a class="nav-item" href="/listings"><span>◉</span> Marketplace Monitor</a>
+      <div class="nav-section-label" style="margin-top:8px;">Intelligence</div>
+      <a class="nav-item" href="/distributors"><span>▣</span> Distributor Risk</a>
+      <a class="nav-item active" href="/analytics"><span>◆</span> Price &amp; Allocation</a>
+      <div class="nav-section-label" style="margin-top:8px;">Analytics</div>
+      <a class="nav-item" href="#">
+        <span>⬡</span> Full Analytics
+        <span style="margin-left:auto;font-size:9px;background:var(--blue-dim);color:var(--blue);padding:1px 5px;border-radius:2px;font-family:var(--font-mono);">PH3</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">
+        <div class="status-dot"></div> System Active · Phase 2
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:5px;">IS 534 · Group 1 · UIUC</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">Price Anomaly &amp; Allocation Intelligence</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Phase 2 · Predictive Signal Layer</div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- KPI Strip -->
+      <div class="kpi-strip" id="kpiStrip">
+        <div class="kpi-card gold"><div class="kpi-label">Price Events Detected</div><div class="kpi-value" id="kTotal">—</div><div class="kpi-sub">Across all regions &amp; Maisons</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Critical Anomalies</div><div class="kpi-value" id="kCritical">—</div><div class="kpi-sub">Immediate intervention signals</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Avg Price Gap</div><div class="kpi-value" id="kGap">—</div><div class="kpi-sub">Cross-regional average deviation</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Arbitrage Potential</div><div class="kpi-value" id="kArb">—</div><div class="kpi-sub">Total recoverable margin</div></div>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- Charts Row 1 -->
+      <div class="section-header">
+        <span class="section-title">Regional &amp; Maison Exposure</span>
+        <span class="section-meta">Price gap signals by geography and brand</span>
+      </div>
+
+      <div class="charts-row two">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Average Price Gap % by Region</div>
+              <div class="chart-sub">Higher gap = stronger grey market arbitrage incentive</div>
+            </div>
+            <span class="badge badge-gold">ML Scored</span>
+          </div>
+          <canvas id="regionGapChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Anomaly Severity Distribution</div>
+              <div class="chart-sub">Critical / High / Medium / Low breakdown</div>
+            </div>
+            <span class="badge badge-red">Alert Layer</span>
+          </div>
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-row two" style="margin-bottom:28px;">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Arbitrage Potential by Region</div>
+              <div class="chart-sub">Estimated USD recoverable via channel enforcement</div>
+            </div>
+          </div>
+          <canvas id="arbitrageChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Maison Exposure — Events &amp; Avg Gap</div>
+              <div class="chart-sub">Dual-axis: event count (bars) vs. avg gap % (line)</div>
+            </div>
+          </div>
+          <canvas id="maisonAnomalyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- What-If Simulator -->
+      <div class="section-header">
+        <span class="section-title">What-If Simulator</span>
+        <span class="section-meta">Allocation &amp; pricing scenario modeling</span>
+      </div>
+
+      <div class="scenario-card">
+        <div class="scenario-title">Grey Market Pressure Simulator</div>
+        <div class="scenario-desc">Adjust regional price gap and allocation overage to model projected diversion exposure. Outputs update in real time based on the relationships derived from our anomaly data.</div>
+
+        <div class="scenario-grid">
+          <div class="sim-controls">
+            <div class="slider-group">
+              <div class="slider-label">
+                <span class="slider-name">Cross-Regional Price Gap</span>
+                <span class="slider-val" id="gapVal">25%</span>
+              </div>
+              <input type="range" id="gapSlider" min="0" max="50" value="25" oninput="updateSim()">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <span class="slider-name">Allocation Overage</span>
+                <span class="slider-val" id="allocVal">30%</span>
+              </div>
+              <input type="range" id="allocSlider" min="0" max="100" value="30" oninput="updateSim()">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <span class="slider-name">Distributor Risk Level</span>
+                <span class="slider-val" id="distVal">Medium</span>
+              </div>
+              <input type="range" id="distSlider" min="0" max="3" step="1" value="1" oninput="updateSim()">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <span class="slider-name">Resale Platform Coverage</span>
+                <span class="slider-val" id="platformVal">50%</span>
+              </div>
+              <input type="range" id="platformSlider" min="10" max="100" value="50" oninput="updateSim()">
+            </div>
+          </div>
+
+          <div class="sim-output">
+            <div class="sim-metric">
+              <div class="sim-metric-label">Projected Diversion Rate</div>
+              <div class="sim-metric-value" id="simDiversion" style="color:var(--amber);">—</div>
+              <div class="sim-metric-change" id="simDivChange">of total allocated inventory</div>
+            </div>
+            <div style="height:1px;background:var(--border);"></div>
+            <div class="sim-metric">
+              <div class="sim-metric-label">Estimated Revenue at Risk</div>
+              <div class="sim-metric-value" id="simRevenue" style="color:var(--red);">—</div>
+              <div class="sim-metric-change" id="simRevChange">annualized, recoverable</div>
+            </div>
+            <div style="height:1px;background:var(--border);"></div>
+            <div class="sim-metric">
+              <div class="sim-metric-label">Recommended Action</div>
+              <div class="sim-metric-value" id="simAction" style="color:var(--green);font-size:13px;line-height:1.4;">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- Allocation Heatmap -->
+      <div class="section-header">
+        <span class="section-title">Allocation vs. Demand Heatmap</span>
+        <span class="section-meta">Region × Maison risk intensity — darker = higher arbitrage pressure</span>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:28px;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Regional Allocation Pressure Index</div>
+            <div class="chart-sub">Combines price gap exposure, distributor risk, and flagged listing density per cell</div>
+          </div>
+          <span class="badge badge-gold">Phase 2 · ML Layer</span>
+        </div>
+        <div id="heatmapContainer" style="overflow-x:auto;padding-top:4px;"></div>
+      </div>
+
+      <!-- Allocation Intelligence Panel (Priority 2) -->
+      <div class="section-header">
+        <span class="section-title">Allocation Intelligence</span>
+        <span class="section-meta">Region over-allocation → grey market pipeline risk</span>
+      </div>
+
+      <!-- KPI strip for allocation -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;" id="allocKpiStrip">
+        <div class="kpi-card amber" style="animation-delay:.05s"><div class="kpi-label">Most Over-Allocated</div><div class="kpi-value" id="allocTopRegion" style="font-size:16px;line-height:1.3;">—</div><div class="kpi-sub" id="allocTopPct">—</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Critical Risk Regions</div><div class="kpi-value" id="allocCriticalCount">—</div><div class="kpi-sub">≥ 40% excess over demand</div></div>
+        <div class="kpi-card gold" style="animation-delay:.1s"><div class="kpi-label">Total Excess Units</div><div class="kpi-value" id="allocTotalOverage">—</div><div class="kpi-sub">feeding potential grey channels</div></div>
+        <div class="kpi-card purple" style="animation-delay:.15s"><div class="kpi-label">Diversion Potential</div><div class="kpi-value" id="allocDiversionPot">—</div><div class="kpi-sub">estimated recoverable margin</div></div>
+      </div>
+
+      <!-- Allocation chart + table row -->
+      <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-bottom:24px;">
+
+        <!-- Bar chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Allocation vs. Demand by Region</div>
+              <div class="chart-sub">Excess inventory above estimated regional sell-through</div>
+            </div>
+            <span class="badge badge-red">Supply Signal</span>
+          </div>
+          <canvas id="allocChart" style="max-height:230px;"></canvas>
+        </div>
+
+        <!-- Risk table -->
+        <div class="chart-card" style="padding:0;overflow:hidden;">
+          <div style="padding:16px 18px;border-bottom:1px solid var(--border);">
+            <div class="chart-title">Region Risk Summary</div>
+          </div>
+          <table class="t">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th>Overage %</th>
+                <th>Avg Risk</th>
+                <th>Flags</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="allocTableBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- Overage detail bar chart -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Diversion Potential by Region</div>
+            <div class="chart-sub">Estimated USD at risk from over-allocated inventory entering grey channels</div>
+          </div>
+        </div>
+        <canvas id="diversionPotentialChart" style="max-height:200px;"></canvas>
+      </div>
+
+      <div class="decorative-line"></div>
+
+      <!-- Top Anomalies Table -->
+      <div class="section-header">
+        <span class="section-title">Top Price Anomaly Events</span>
+        <span class="section-meta">Sorted by price gap severity</span>
+      </div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-title">High-Gap Diversion Signals</div>
+          <div style="display:flex;gap:8px;">
+            <select id="sevFilter" onchange="loadAnomalies()" style="background:var(--bg-deep);border:1px solid var(--border);color:var(--text-secondary);font-family:var(--font-mono);font-size:10px;padding:5px 8px;border-radius:4px;outline:none;">
+              <option value="all">All Severities</option>
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+            </select>
+            <select id="regFilter" onchange="loadAnomalies()" style="background:var(--bg-deep);border:1px solid var(--border);color:var(--text-secondary);font-family:var(--font-mono);font-size:10px;padding:5px 8px;border-radius:4px;outline:none;">
+              <option value="all">All Regions</option>
+            </select>
+          </div>
+        </div>
+        <table class="t">
+          <thead>
+            <tr>
+              <th>Maison · Product</th>
+              <th>Region</th>
+              <th>Expected MSRP</th>
+              <th>Resale Price</th>
+              <th>Gap %</th>
+              <th>Arbitrage (USD)</th>
+              <th>Severity</th>
+              <th>Detected</th>
+            </tr>
+          </thead>
+          <tbody id="anomalyTableBody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+</div>
+
+<script>
+Chart.defaults.color = "#525561";
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const GOLD = "#c9a84c", RED = "#e05656", AMBER = "#f0922b", GREEN = "#2ec887", BLUE = "#4a90d9", PURPLE = "#9b72e8";
+const fmt = n => new Intl.NumberFormat("en-US").format(Math.round(n));
+const fmtUSD = n => n >= 1e6 ? "$" + (n/1e6).toFixed(1) + "M" : n >= 1e3 ? "$" + (n/1e3).toFixed(0) + "K" : "$" + fmt(n);
+
+// ── LOAD KPIs ──────────────────────────────────────────────────────────────
+async function loadKPIs() {
+  const d = await fetch("/api/analytics/summary").then(r => r.json());
+  document.getElementById("kTotal").textContent = fmt(d.total_anomalies);
+  document.getElementById("kCritical").textContent = fmt(d.critical_anomalies);
+  document.getElementById("kGap").textContent = d.avg_gap_pct.toFixed(1) + "%";
+  document.getElementById("kArb").textContent = fmtUSD(d.total_arbitrage_usd);
+  return d;
+}
+
+// ── CHARTS ─────────────────────────────────────────────────────────────────
+function chartDefaults() {
+  return {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#0c111c",
+        borderColor: "rgba(255,255,255,0.06)",
+        borderWidth: 1,
+        titleColor: "#e8e4da",
+        bodyColor: "#8a8c96",
+      }
+    },
+    scales: {
+      x: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 } } },
+      y: { grid: { color: "rgba(255,255,255,0.025)" } }
+    }
+  };
+}
+
+async function loadCharts(data) {
+  const regions = data.by_region;
+  const maisons = data.by_maison;
+
+  // Price gap by region
+  const gapColors = regions.map(r => {
+    const g = r.avg_gap_pct / 40;
+    return `rgba(201,168,76,${0.3 + g * 0.7})`;
+  });
+  new Chart(document.getElementById("regionGapChart"), {
+    type: "bar",
+    data: {
+      labels: regions.map(r => r.region),
+      datasets: [{ data: regions.map(r => r.avg_gap_pct), backgroundColor: gapColors, borderColor: "rgba(201,168,76,0.6)", borderWidth: 1, borderRadius: 3 }]
+    },
+    options: { ...chartDefaults(), plugins: { ...chartDefaults().plugins, tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ` Gap: ${c.raw.toFixed(1)}%` } } } }
+  });
+
+  // Severity doughnut
+  const sevOrder = ["Critical", "High", "Medium", "Low"];
+  const sevColors = { Critical: RED, High: AMBER, Medium: GOLD, Low: GREEN };
+  const sevMap = Object.fromEntries(data.severity_distribution.map(s => [s.severity, s.count]));
+  new Chart(document.getElementById("severityChart"), {
+    type: "doughnut",
+    data: {
+      labels: sevOrder,
+      datasets: [{
+        data: sevOrder.map(s => sevMap[s] || 0),
+        backgroundColor: sevOrder.map(s => sevColors[s] + "cc"),
+        borderColor: "#0c111c",
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, cutout: "60%",
+      plugins: {
+        legend: { display: true, position: "right", labels: { boxWidth: 8, boxHeight: 8, padding: 10, font: { size: 10 }, color: "#8a8c96" } },
+        tooltip: { backgroundColor: "#0c111c", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1, titleColor: "#e8e4da", bodyColor: "#8a8c96" }
+      }
+    }
+  });
+
+  // Arbitrage by region
+  new Chart(document.getElementById("arbitrageChart"), {
+    type: "bar",
+    data: {
+      labels: regions.map(r => r.region),
+      datasets: [{
+        data: regions.map(r => r.total_arbitrage_usd),
+        backgroundColor: regions.map(r => `rgba(224,86,86,${0.2 + (r.total_arbitrage_usd / Math.max(...regions.map(x => x.total_arbitrage_usd))) * 0.6})`),
+        borderColor: "rgba(224,86,86,0.5)", borderWidth: 1, borderRadius: 3,
+      }]
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: { ...chartDefaults().plugins, tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ` ${fmtUSD(c.raw)}` } } }
+    }
+  });
+
+  // Maison events + gap dual axis
+  new Chart(document.getElementById("maisonAnomalyChart"), {
+    type: "bar",
+    data: {
+      labels: maisons.map(m => m.maison),
+      datasets: [
+        { label: "Events", data: maisons.map(m => m.events), backgroundColor: "rgba(74,144,217,0.35)", borderColor: BLUE, borderWidth: 1, borderRadius: 3, yAxisID: "y" },
+        { label: "Avg Gap %", data: maisons.map(m => m.avg_gap_pct), type: "line", borderColor: GOLD, backgroundColor: "rgba(201,168,76,0.1)", pointBackgroundColor: GOLD, pointRadius: 4, tension: 0.35, yAxisID: "y1" },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: "top", labels: { boxWidth: 8, boxHeight: 8, font: { size: 10 }, color: "#8a8c96" } },
+        tooltip: { backgroundColor: "#0c111c", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1, titleColor: "#e8e4da", bodyColor: "#8a8c96" }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 20 } },
+        y: { grid: { color: "rgba(255,255,255,0.025)" }, title: { display: true, text: "Events", font: { size: 9 }, color: "#525561" } },
+        y1: { position: "right", grid: { display: false }, title: { display: true, text: "Gap %", font: { size: 9 }, color: "#525561" }, ticks: { callback: v => v + "%" } }
+      }
+    }
+  });
+}
+
+// ── HEATMAP ────────────────────────────────────────────────────────────────
+const MAISON_KEYS = ["Louis Vuitton", "Christian Dior", "Loewe", "Celine", "Givenchy", "Fendi", "Bulgari", "TAG Heuer"];
+const REGION_KEYS = ["Greater China", "Southeast Asia", "Middle East", "Latin America", "Eastern Europe", "North America", "Japan & Korea", "South Asia"];
+
+function heatColor(intensity) {
+  // 0 = dark blue-grey, 1 = deep red-gold
+  const r = Math.round(12 + intensity * 220);
+  const g = Math.round(17 + intensity * (168 - 17) * (1 - intensity * 0.5));
+  const b = Math.round(28 + intensity * 20);
+  return `rgb(${r},${g},${b})`;
+}
+
+function buildHeatmap(regionData) {
+  const container = document.getElementById("heatmapContainer");
+
+  // Build a lookup of region -> arbitrage (used as intensity proxy)
+  const regionArb = {};
+  regionData.forEach(r => {
+    regionArb[r.region] = r.total_arbitrage_usd || 0;
+  });
+  const maxArb = Math.max(...Object.values(regionArb), 1);
+
+  // Synthetic per-cell values (region × maison combination)
+  // Seeded by region arbitrage * maison price tier factor
+  const maisonWeights = { "Louis Vuitton": 1.0, "Christian Dior": 0.95, "Loewe": 0.7, "Celine": 0.65, "Givenchy": 0.6, "Fendi": 0.75, "Bulgari": 0.8, "TAG Heuer": 0.55 };
+
+  let html = `<div class="alloc-header">
+    <div class="alloc-h-label"></div>
+    ${MAISON_KEYS.map(m => `<div class="alloc-h-label">${m.split(" ")[m.split(" ").length - 1]}</div>`).join("")}
+  </div>
+  <div class="alloc-grid">`;
+
+  REGION_KEYS.forEach(region => {
+    const baseIntensity = (regionArb[region] || 0) / maxArb;
+    html += `<div class="alloc-row"><div class="alloc-label">${region}</div>`;
+    MAISON_KEYS.forEach(maison => {
+      const noise = (Math.sin(region.charCodeAt(0) * maison.charCodeAt(0)) + 1) / 2 * 0.3;
+      const intensity = Math.min(1, baseIntensity * maisonWeights[maison] + noise);
+      const pct = Math.round(intensity * 100);
+      const textColor = intensity > 0.5 ? "#e8e4da" : "#8a8c96";
+      html += `<div class="alloc-cell" style="background:${heatColor(intensity)};color:${textColor};" title="${region} × ${maison}: ${pct} pressure index">${pct}</div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+// ── WHAT-IF SIMULATOR ──────────────────────────────────────────────────────
+const distLabels = ["Low", "Medium", "High", "Critical"];
+const ACTIONS = {
+  low: "Maintain standard monitoring. No immediate action required.",
+  medium: "Increase marketplace scan frequency. Flag relevant distributors for review.",
+  high: "Trigger distributor audit workflow. Recommend allocation review before next PO.",
+  critical: "Hold shipment release. Escalate to Brand Protection and Legal immediately."
+};
+
+function updateSim() {
+  const gap = parseInt(document.getElementById("gapSlider").value);
+  const alloc = parseInt(document.getElementById("allocSlider").value);
+  const dist = parseInt(document.getElementById("distSlider").value);
+  const platform = parseInt(document.getElementById("platformSlider").value);
+
+  document.getElementById("gapVal").textContent = gap + "%";
+  document.getElementById("allocVal").textContent = alloc + "%";
+  document.getElementById("distVal").textContent = distLabels[dist];
+  document.getElementById("platformVal").textContent = platform + "%";
+
+  // Diversion rate model (simplified regression-style)
+  const gapFactor = gap / 50;
+  const allocFactor = alloc / 100;
+  const distFactor = dist / 3;
+  const platformFactor = (100 - platform) / 100;
+
+  const diversionRate = Math.min(0.9, (gapFactor * 0.4 + allocFactor * 0.3 + distFactor * 0.2 + platformFactor * 0.1) * 0.85);
+  const avgAllocVolume = 1200;
+  const avgProductValue = 2800;
+  const revenueAtRisk = Math.round(diversionRate * avgAllocVolume * avgProductValue * 30 * 0.7);
+
+  document.getElementById("simDiversion").textContent = (diversionRate * 100).toFixed(1) + "%";
+  document.getElementById("simRevenue").textContent = fmtUSD(revenueAtRisk);
+
+  const severity = diversionRate > 0.6 ? "critical" : diversionRate > 0.4 ? "high" : diversionRate > 0.2 ? "medium" : "low";
+  const actionEl = document.getElementById("simAction");
+  actionEl.textContent = ACTIONS[severity];
+  actionEl.style.color = { critical: RED, high: AMBER, medium: GOLD, low: GREEN }[severity];
+}
+
+// ── ANOMALY TABLE ──────────────────────────────────────────────────────────
+async function loadAnomalies() {
+  const sev = document.getElementById("sevFilter").value;
+  const reg = document.getElementById("regFilter").value;
+  const data = await fetch(`/api/price-anomalies?severity=${sev}&region=${reg}&n=40`).then(r => r.json());
+
+  function sevBadge(s) {
+    const cls = { Critical: "sev-critical", High: "sev-high", Medium: "sev-medium", Low: "sev-low" }[s] || "sev-low";
+    return `<span class="sev ${cls}">${s}</span>`;
+  }
+
+  const tbody = document.getElementById("anomalyTableBody");
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td>
+        <div style="font-size:12px;color:var(--text-primary);font-weight:500;">${a.maison}</div>
+        <div class="mono" style="color:var(--text-muted);font-size:10px;">${a.product_name.length > 22 ? a.product_name.slice(0,20)+"…" : a.product_name}</div>
+      </td>
+      <td><span style="font-size:11px;">${a.region}</span></td>
+      <td><span class="mono">$${fmt(a.expected_msrp)}</span></td>
+      <td><span class="mono" style="color:var(--red);">$${fmt(a.detected_resale_price)}</span></td>
+      <td><span class="mono" style="color:var(--amber);font-weight:500;">${a.gap_pct.toFixed(1)}%</span></td>
+      <td><span class="mono" style="color:var(--gold);">$${fmt(a.arbitrage_potential_usd)}</span></td>
+      <td>${sevBadge(a.severity)}</td>
+      <td><span class="mono" style="color:var(--text-muted);font-size:10px;">${a.detected_at.split(" ")[0]}</span></td>
+    </tr>
+  `).join("");
+}
+
+async function populateRegionFilter(regions) {
+  const sel = document.getElementById("regFilter");
+  regions.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.region;
+    opt.textContent = r.region;
+    sel.appendChild(opt);
+  });
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  const data = await loadKPIs();
+  loadCharts(data);
+  buildHeatmap(data.by_region);
+  populateRegionFilter(data.by_region);
+  loadAnomalies();
+  updateSim();
+  loadAllocationIntelligence();
+});
+
+/* ── ALLOCATION INTELLIGENCE (Priority 2) ──────────────────────────────── */
+let allocChart = null;
+let diversionChart = null;
+
+async function loadAllocationIntelligence() {
+  const rows = await fetch("/api/analytics/allocation").then(r => r.json());
+  if (!rows || !rows.length) return;
+
+  /* ── KPI strip ─────────────────────────────────────────────────── */
+  const criticalRegions = rows.filter(r => r.risk_flag === "Critical").length;
+  const topRegion = rows[0];
+  const totalOverage = rows.reduce((s, r) => s + r.overage_units, 0);
+  const totalDivPot = rows.reduce((s, r) => s + r.diversion_potential_usd, 0);
+
+  document.getElementById("allocTopRegion").textContent = topRegion.region;
+  document.getElementById("allocTopPct").textContent = `${topRegion.overage_pct}% over demand · ${topRegion.overage_units.toLocaleString()} excess units`;
+  document.getElementById("allocCriticalCount").textContent = criticalRegions;
+  document.getElementById("allocTotalOverage").textContent = totalOverage.toLocaleString();
+  document.getElementById("allocDiversionPot").textContent = fmtUSD(totalDivPot);
+
+  /* ── Alloc vs. demand bar chart ─────────────────────────────────── */
+  const ctx1 = document.getElementById("allocChart");
+  if (allocChart) { allocChart.destroy(); }
+  allocChart = new Chart(ctx1, {
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.region),
+      datasets: [
+        {
+          label: "Allocated",
+          data: rows.map(r => r.total_allocation),
+          backgroundColor: "rgba(74,144,217,0.35)",
+          borderColor: "rgba(74,144,217,0.6)",
+          borderWidth: 1,
+          borderRadius: 3,
+        },
+        {
+          label: "Est. Demand",
+          data: rows.map(r => r.total_demand),
+          backgroundColor: "rgba(46,200,135,0.35)",
+          borderColor: "rgba(46,200,135,0.6)",
+          borderWidth: 1,
+          borderRadius: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: "top", labels: { boxWidth: 8, boxHeight: 8, font: { size: 10 }, color: "#8a8c96" } },
+        tooltip: {
+          backgroundColor: "#0c111c", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1,
+          titleColor: "#e8e4da", bodyColor: "#8a8c96",
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.raw.toLocaleString()} units` }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 25 } },
+        y: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 } } }
+      }
+    }
+  });
+
+  /* ── Region risk summary table ──────────────────────────────────── */
+  const riskColors = { Critical: "var(--red)", High: "var(--amber)", Medium: "var(--gold)", Low: "var(--green)" };
+  const riskBgMap   = { Critical: "var(--red-dim)", High: "var(--amber-dim)", Medium: "var(--gold-dim)", Low: "var(--green-dim)" };
+  const tbody = document.getElementById("allocTableBody");
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-size:12px;color:var(--text-primary);">${r.region}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-family:var(--font-mono);font-size:11px;color:${riskColors[r.risk_flag]};">${r.overage_pct}%</span>
+          <div style="flex:1;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;min-width:30px;">
+            <div style="height:100%;width:${Math.min(100,r.overage_pct*1.8)}%;background:${riskColors[r.risk_flag]};border-radius:2px;"></div>
+          </div>
+        </div>
+      </td>
+      <td><span style="font-family:var(--font-mono);font-size:11px;color:${r.avg_risk_score>=66?"var(--red)":r.avg_risk_score>=41?"var(--amber)":"var(--green)"};">${r.avg_risk_score}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:11px;color:${r.total_compliance_flags>3?"var(--red)":r.total_compliance_flags>1?"var(--amber)":"var(--text-muted)"};">${r.total_compliance_flags}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:3px;background:${riskBgMap[r.risk_flag]};color:${riskColors[r.risk_flag]};">${r.risk_flag}</span></td>
+    </tr>
+  `).join("");
+
+  /* ── Diversion potential chart ──────────────────────────────────── */
+  const ctx2 = document.getElementById("diversionPotentialChart");
+  if (diversionChart) { diversionChart.destroy(); }
+  const maxPot = Math.max(...rows.map(r => r.diversion_potential_usd), 1);
+  diversionChart = new Chart(ctx2, {
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.region),
+      datasets: [{
+        label: "Diversion Potential (USD)",
+        data: rows.map(r => r.diversion_potential_usd),
+        backgroundColor: rows.map(r => {
+          const intensity = r.diversion_potential_usd / maxPot;
+          return `rgba(224,86,86,${0.2 + intensity * 0.65})`;
+        }),
+        borderColor: "rgba(224,86,86,0.5)",
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0c111c", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1,
+          titleColor: "#e8e4da", bodyColor: "#8a8c96",
+          callbacks: { label: c => ` ${fmtUSD(c.raw)} at risk` }
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { callback: v => fmtUSD(v), font: { size: 9 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 9 } } }
+      }
+    }
+  });
+}
+
+</body>
+</html>
