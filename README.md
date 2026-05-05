@@ -89,22 +89,6 @@ Optional advanced ML install:
 python -m pip install -r requirements-phase2.txt
 ```
 
-## Deploy on Render
-
-This repository includes `render.yaml`, `runtime.txt`, and `requirements-deploy.txt`.
-
-Render setup:
-
-1. Push this project to GitHub.
-2. Create a new Render Web Service from the GitHub repo.
-3. Choose the free instance type for a portfolio demo.
-4. Use the detected Blueprint settings from `render.yaml`, or manually set:
-
-```text
-Build Command: pip install -r requirements.txt -r requirements-deploy.txt
-Start Command: gunicorn app:app --bind 0.0.0.0:$PORT
-```
-
 Free Render services spin down when idle and have an ephemeral filesystem. That is acceptable for this prototype because the app automatically reseeds synthetic demo data when the SQLite database is missing.
 
 ## Demo Script
