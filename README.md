@@ -4,6 +4,12 @@ An AI-assisted grey market diversion intelligence prototype for luxury brand pro
 
 This project was built for an information consulting engagement focused on LVMH's grey market challenges. The data is synthetic, but the workflow is real: the app scans marketplace listings, scores distributor risk, explains why records were flagged, and gives leadership an operating view of diversion exposure.
 
+## Live Demo
+
+[Open the live prototype](https://lvmh-grey-market-intelligence.onrender.com)
+
+Render free-tier apps may take a short moment to wake up after inactivity.
+
 ![Dashboard scan view](docs/assets/screenshots/dashboard-scan.png)
 
 ## Why This Exists
