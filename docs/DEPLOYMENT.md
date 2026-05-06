@@ -59,6 +59,7 @@ Python: 3.12.7
 After Render finishes deployment, open the public URL and test:
 
 ```text
+https://lvmh-grey-market-intelligence.onrender.com
 /
 /listings
 /distributors
@@ -67,6 +68,12 @@ After Render finishes deployment, open the public URL and test:
 ```
 
 Click `Run Scan` on the dashboard and confirm the scan panel updates.
+
+Current live URL:
+
+```text
+https://lvmh-grey-market-intelligence.onrender.com
+```
 
 ## 4. Add the Link to Your Portfolio
 
