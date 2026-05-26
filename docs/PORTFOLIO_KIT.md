@@ -67,7 +67,7 @@ The project is synthetic because I did not have access to proprietary LVMH data,
 
 ## Next Technical Milestone
 
-Build persistent scan history:
+Completed next feature:
 
 ```text
 scan_runs table
@@ -76,4 +76,4 @@ portfolio risk trend chart
 last scan vs current scan comparison
 ```
 
-This is the next feature that will make the prototype feel like an intelligence platform rather than a one-time dashboard.
+Next strongest addition: connect a small real-data source, starting with eBay listings, so the demo can show synthetic governance logic running against a real marketplace signal.

@@ -1147,7 +1147,7 @@
       <div class="chart-card" style="margin-bottom:14px;">
         <div class="chart-header">
           <div>
-            <div class="chart-title">30-Day Detection Trend</div>
+            <div class="chart-title">DIS Score History</div>
             <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:3px;">Total listings scanned vs. flagged per day — post-scan reclassifications shown in red</div>
           </div>
           <span class="chart-badge badge-live">Live · Updates on Scan</span>
@@ -1445,7 +1445,10 @@ function buildScanResultsHTML(r) {
 
   /* Stat pills */
   const ps = `font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:3px;white-space:nowrap;`;
+  const dis = r.dis_snapshot || {};
+  const disColor = { Critical:"var(--red)", High:"var(--amber)", Elevated:"var(--gold)", Controlled:"var(--green)" }[dis.band] || "var(--gold)";
   const pills = `
+    <div style="${ps}background:rgba(201,168,76,0.11);color:${disColor};">DIS <strong>${dis.score ?? "--"}</strong> ${dis.band || ""}</div>
     <div style="${ps}background:rgba(255,255,255,0.04);color:var(--text-secondary);">Scanned <strong style="color:var(--text-primary);">${s.listings_scanned}</strong></div>
     <div style="${ps}background:var(--amber-dim);color:var(--amber);">Reclassified <strong>${s.listings_reclassified}</strong></div>
     <div style="${ps}background:var(--red-dim);color:var(--red);">New Critical <strong>${s.new_critical}</strong></div>
@@ -1865,15 +1868,21 @@ async function loadDIS() {
 let _trendChart = null;
 
 async function loadTrendChart() {
-  const data = await fetch("/api/charts/daily-detections").then(r => r.json());
+  const payload = await fetch("/api/dis/history?limit=20").then(r => r.json());
+  const data = payload.items || [];
   if (!data.length) return;
 
-  const labels = data.map(d => {
-    const dt = new Date(d.day);
-    return (dt.getMonth()+1) + "/" + dt.getDate();
+  const labels = data.map((d, idx) => {
+    const dt = new Date((d.created_at || "").replace(" ", "T"));
+    if (Number.isNaN(dt.getTime())) return `Scan ${idx + 1}`;
+    return (dt.getMonth()+1) + "/" + dt.getDate() + " " +
+      String(dt.getHours()).padStart(2, "0") + ":" +
+      String(dt.getMinutes()).padStart(2, "0");
   });
-  const totals  = data.map(d => d.total);
-  const flagged = data.map(d => d.flagged);
+  const scores = data.map(d => d.score);
+  const flaggedRates = data.map(d => d.raw ? d.raw.flagged_pct : 0);
+  const latest = payload.latest || data[data.length - 1];
+  const latestColor = latest.band === "Critical" ? RED : latest.band === "High" ? AMBER : latest.band === "Controlled" ? GREEN : GOLD;
 
   const ctx = document.getElementById("trendChart");
   if (_trendChart) { _trendChart.destroy(); }
@@ -1884,26 +1893,28 @@ async function loadTrendChart() {
       labels,
       datasets: [
         {
-          label: "Scanned",
-          data: totals,
-          borderColor: "rgba(74,144,217,0.7)",
-          backgroundColor: "rgba(74,144,217,0.06)",
-          pointRadius: 3,
-          pointBackgroundColor: BLUE,
-          tension: 0.35,
-          fill: true,
-          order: 2,
-        },
-        {
-          label: "Flagged",
-          data: flagged,
-          borderColor: RED,
-          backgroundColor: "rgba(224,86,86,0.08)",
-          pointRadius: 3,
-          pointBackgroundColor: RED,
+          label: "DIS Score",
+          data: scores,
+          borderColor: latestColor,
+          backgroundColor: "rgba(201,168,76,0.10)",
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: scores.map(v => v >= 81 ? RED : v >= 61 ? AMBER : v >= 31 ? GOLD : GREEN),
           tension: 0.35,
           fill: true,
           order: 1,
+        },
+        {
+          label: "Flagged %",
+          data: flaggedRates,
+          borderColor: "rgba(224,86,86,0.45)",
+          backgroundColor: "rgba(224,86,86,0.04)",
+          pointRadius: 2,
+          pointBackgroundColor: RED,
+          tension: 0.35,
+          borderDash: [4, 4],
+          fill: false,
+          order: 2,
         },
       ]
     },
@@ -1922,11 +1933,22 @@ async function loadTrendChart() {
           borderWidth: 1,
           titleColor: "#e8e4da",
           bodyColor: "#8a8c96",
+          callbacks: {
+            afterBody: (items) => {
+              const row = data[items[0].dataIndex];
+              if (!row) return "";
+              return [
+                `Band: ${row.band}`,
+                `Avg distributor risk: ${row.raw.avg_dist_risk}`,
+                row.scan_id ? `Scan: ${row.scan_id.slice(0, 8)}` : "Live baseline"
+              ];
+            }
+          }
         }
       },
       scales: {
         x: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 }, maxTicksLimit: 15 } },
-        y: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 } }, beginAtZero: true }
+        y: { grid: { color: "rgba(255,255,255,0.025)" }, ticks: { font: { size: 9 } }, beginAtZero: true, max: 100 }
       }
     }
   });
@@ -2107,6 +2129,9 @@ function updateScanMeta(scanTime) {
 /* ── INIT ────────────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", async () => {
   updateScanMeta();
+  const trendCard = document.getElementById("trendChart")?.closest(".chart-card");
+  trendCard?.querySelector(".chart-title + div")?.replaceChildren("Persisted Diversion Intelligence Score snapshots from each ML scan");
+  trendCard?.querySelector(".chart-badge")?.replaceChildren("Live History");
   await loadAll();
   loadPriceGapChart();
   loadPlatformChart();

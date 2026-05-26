@@ -7,8 +7,18 @@ Phase 1: Foundation + Marketplace Monitoring Dashboard
 from flask import Flask, render_template, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, desc
-from database import db, Product, Distributor, MarketplaceListing, PriceAnomaly, DiversionAlert
+from database import (
+    db,
+    Product,
+    Distributor,
+    MarketplaceListing,
+    PriceAnomaly,
+    DiversionAlert,
+    ScanRun,
+    DiversionScoreHistory,
+)
 from data_generator import seed_all
+from datetime import datetime
 import os
 import time
 
@@ -30,8 +40,9 @@ def initialize_db():
         with app.app_context():
             seed_all()
     else:
-        # Check if tables have data
+        # Add newly introduced tables without disturbing existing demo data.
         with app.app_context():
+            db.create_all()
             count = Product.query.count()
             if count == 0:
                 seed_all()
@@ -73,6 +84,76 @@ def _score_color_bucket(score):
     if score >= 41:
         return "Medium"
     return "Low"
+
+
+def _dis_band(score):
+    if score >= 81:
+        return "Critical", "Immediate Action Required"
+    if score >= 61:
+        return "High", "Elevated Diversion Risk"
+    if score >= 31:
+        return "Elevated", "Monitoring Advised"
+    return "Controlled", "Within Acceptable Range"
+
+
+def _calculate_dis_snapshot():
+    """
+    Calculate the Diversion Intelligence Score from the current database state.
+    The same helper powers the live gauge and the persisted scan snapshots.
+    """
+    total = MarketplaceListing.query.count() or 1
+    flagged = MarketplaceListing.query.filter_by(is_flagged=True).count()
+    flagged_rate = (flagged / total) * 100
+
+    avg_dist_risk = db.session.query(func.avg(Distributor.risk_score)).scalar() or 0
+    avg_price_gap = db.session.query(func.avg(PriceAnomaly.gap_pct)).scalar() or 0
+
+    flagged_norm = min(100, flagged_rate * 1.8)
+    dist_norm = min(100, float(avg_dist_risk))
+    gap_norm = min(100, float(avg_price_gap) * 2.5)
+
+    score = round(
+        flagged_norm * 0.35 +
+        dist_norm * 0.35 +
+        gap_norm * 0.30,
+        1
+    )
+    band, label = _dis_band(score)
+
+    return {
+        "score": score,
+        "band": band,
+        "label": label,
+        "drivers": {
+            "flagged_listing_rate": round(flagged_norm, 1),
+            "avg_distributor_risk": round(dist_norm, 1),
+            "avg_price_gap": round(gap_norm, 1),
+        },
+        "raw": {
+            "flagged_pct": round(flagged_rate, 1),
+            "avg_dist_risk": round(float(avg_dist_risk), 1),
+            "avg_gap_pct": round(float(avg_price_gap), 1),
+        },
+        "total_listings": total,
+        "flagged_listings": flagged,
+    }
+
+
+def _history_from_snapshot(snapshot, scan_id=None):
+    return DiversionScoreHistory(
+        scan_id=scan_id,
+        score=snapshot["score"],
+        band=snapshot["band"],
+        label=snapshot["label"],
+        flagged_listing_rate=snapshot["drivers"]["flagged_listing_rate"],
+        avg_distributor_risk=snapshot["drivers"]["avg_distributor_risk"],
+        avg_price_gap=snapshot["drivers"]["avg_price_gap"],
+        flagged_pct=snapshot["raw"]["flagged_pct"],
+        avg_dist_risk_raw=snapshot["raw"]["avg_dist_risk"],
+        avg_gap_pct_raw=snapshot["raw"]["avg_gap_pct"],
+        total_listings=snapshot["total_listings"],
+        flagged_listings=snapshot["flagged_listings"],
+    )
 
 
 def _build_driver_breakdown(distributor):
@@ -751,7 +832,7 @@ def run_scan():
             change["seller_name"] = src.seller_name or ""
             change["maison"] = src.product.maison if src.product else ""
 
-    db.session.commit()
+    db.session.flush()
 
     elapsed_ms = round((time.time() - t_start) * 1000)
     summary = build_scan_summary(
@@ -761,6 +842,31 @@ def run_scan():
         total_distributors=len(distributors),
         scan_duration_ms=elapsed_ms,
     )
+
+    summary_stats = summary["summary"]
+    scan_run = ScanRun(
+        duration_ms=elapsed_ms,
+        listings_scanned=summary_stats["listings_scanned"],
+        listings_reclassified=summary_stats["listings_reclassified"],
+        new_critical_listings=summary_stats["new_critical"],
+        new_high_listings=summary_stats["new_high"],
+        distributors_scanned=summary_stats["distributors_rescored"],
+        distributors_changed=summary_stats["distributors_changed"],
+        distributors_escalated=summary_stats["distributors_escalated"],
+        distributors_deescalated=summary_stats["distributors_deescalated"],
+        severity=summary["severity"],
+        narrative=summary["narrative"],
+    )
+    db.session.add(scan_run)
+    db.session.flush()
+
+    dis_snapshot = _calculate_dis_snapshot()
+    dis_history = _history_from_snapshot(dis_snapshot, scan_id=scan_run.scan_id)
+    db.session.add(dis_history)
+    db.session.commit()
+
+    summary["scan_run"] = scan_run.to_dict()
+    summary["dis_snapshot"] = dis_history.to_dict()
 
     return jsonify(summary)
 
@@ -917,7 +1023,7 @@ def analytics_allocation():
     return jsonify(result)
 
 
-@app.route("/api/dis")
+@app.route("/api/dis_legacy")
 def get_dis():
     """
     Diversion Intelligence Score — 0–100 portfolio-level risk gauge.
@@ -967,6 +1073,65 @@ def get_dis():
             "avg_dist_risk": round(float(avg_dist_risk), 1),
             "avg_gap_pct":   round(float(avg_price_gap), 1),
         }
+    })
+
+
+@app.route("/api/dis")
+def get_live_dis():
+    """Diversion Intelligence Score - 0-100 portfolio-level risk gauge."""
+    return jsonify(_calculate_dis_snapshot())
+
+
+@app.route("/api/dis/history")
+def get_dis_history():
+    """Return persisted DIS snapshots created by Run Scan events."""
+    limit = request.args.get("limit", 20, type=int)
+    limit = min(max(limit or 20, 1), 100)
+
+    rows_desc = (
+        DiversionScoreHistory.query
+        .order_by(desc(DiversionScoreHistory.created_at))
+        .limit(limit)
+        .all()
+    )
+    rows = list(reversed(rows_desc))
+
+    if rows:
+        items = [row.to_dict() for row in rows]
+        latest = items[-1]
+        previous = items[-2] if len(items) > 1 else None
+        scores = [item["score"] for item in items]
+        delta = round(latest["score"] - previous["score"], 1) if previous else 0.0
+        return jsonify({
+            "items": items,
+            "count": DiversionScoreHistory.query.count(),
+            "latest": latest,
+            "delta": delta,
+            "trend": {
+                "min": round(min(scores), 1),
+                "max": round(max(scores), 1),
+                "avg": round(sum(scores) / len(scores), 1),
+            },
+        })
+
+    live_snapshot = _calculate_dis_snapshot()
+    live_item = {
+        **live_snapshot,
+        "history_id": None,
+        "scan_id": None,
+        "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "is_live_snapshot": True,
+    }
+    return jsonify({
+        "items": [live_item],
+        "count": 0,
+        "latest": live_item,
+        "delta": 0.0,
+        "trend": {
+            "min": live_snapshot["score"],
+            "max": live_snapshot["score"],
+            "avg": live_snapshot["score"],
+        },
     })
 
 
@@ -1094,7 +1259,7 @@ def seller_network():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "version": "3.0.0-phase2-tier1"})
+    return jsonify({"status": "ok", "version": "3.1.0-dis-history"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
