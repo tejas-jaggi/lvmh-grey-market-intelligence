@@ -70,6 +70,16 @@
     }
     .filter-btn:hover { border-color:var(--border-accent);color:var(--gold); }
     .filter-btn.active { background:var(--gold-dim);border-color:var(--border-accent);color:var(--gold); }
+    .filter-btn.importing { opacity:0.72;cursor:wait; }
+    .connector-badge {
+      display:inline-flex;align-items:center;gap:6px;
+      font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;
+      padding:7px 9px;border-radius:var(--radius-sm);border:1px solid var(--border);
+      color:var(--text-muted);background:rgba(255,255,255,0.025);
+    }
+    .connector-badge.live { color:var(--green);background:var(--green-dim);border-color:rgba(46,200,135,0.15); }
+    .connector-badge.fixture { color:var(--gold);background:var(--gold-dim);border-color:var(--border-accent); }
+    .import-status { font-family:var(--font-mono);font-size:10px;color:var(--text-muted);min-height:16px; }
 
     /* Table card */
     .table-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden; }
@@ -95,6 +105,9 @@
     .status-active { color:var(--green);background:var(--green-dim);border:1px solid rgba(46,200,135,0.15); }
     .status-review { color:var(--amber);background:var(--amber-dim);border:1px solid rgba(240,146,43,0.15); }
     .status-removed { color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid var(--border); }
+    .source-badge { font-family:var(--font-mono);font-size:9px;padding:3px 7px;border-radius:3px;letter-spacing:0.06em;white-space:nowrap; }
+    .source-live { color:var(--blue);background:var(--blue-dim);border:1px solid rgba(74,144,217,0.15); }
+    .source-demo { color:var(--text-muted);background:rgba(255,255,255,0.035);border:1px solid var(--border); }
 
     .confidence-bar { display:flex;align-items:center;gap:8px; }
     .conf-bar-bg { width:50px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden; }
@@ -170,6 +183,12 @@
         <button class="filter-btn" id="flaggedBtn" onclick="toggleFlagged()">
           ⚑ Flagged Only
         </button>
+        <input class="search-input" type="text" id="importQuery" value="Louis Vuitton handbag" style="min-width:180px;">
+        <button class="filter-btn" id="importBtn" onclick="importEbayListings()">
+          eBay Import
+        </button>
+        <span class="connector-badge fixture" id="connectorBadge">eBay Fixture</span>
+        <span class="import-status" id="importStatus"></span>
       </div>
 
       <div class="table-card">
@@ -249,6 +268,12 @@ function statusBadge(status) {
   return `<span class="status-badge ${cls}">${status}</span>`;
 }
 
+function sourceBadge(listing) {
+  const cls = listing.is_external ? "source-live" : "source-demo";
+  const label = listing.is_external ? "eBay" : "Demo";
+  return `<span class="source-badge ${cls}">${label}</span>`;
+}
+
 function confBar(conf) {
   const pct = Math.round(conf * 100);
   const col = conf > 0.8 ? "#e05656" : conf > 0.6 ? "#f0922b" : conf > 0.4 ? "#c9a84c" : "#2ec887";
@@ -256,6 +281,49 @@ function confBar(conf) {
     <div class="conf-bar-bg"><div class="conf-bar-fill" style="width:${pct}%;background:${col};"></div></div>
     <span class="mono" style="color:${col};font-size:10px;">${pct}%</span>
   </div>`;
+}
+
+async function loadConnectorStatus() {
+  const badge = document.getElementById("connectorBadge");
+  try {
+    const data = await fetch("/api/connectors/ebay/status").then(r => r.json());
+    badge.classList.toggle("live", data.configured);
+    badge.classList.toggle("fixture", !data.configured);
+    badge.textContent = data.configured ? `${data.marketplace_id} Live` : "eBay Fixture";
+  } catch (err) {
+    badge.classList.remove("live");
+    badge.classList.add("fixture");
+    badge.textContent = "eBay Offline";
+  }
+}
+
+async function importEbayListings() {
+  const btn = document.getElementById("importBtn");
+  const status = document.getElementById("importStatus");
+  const query = document.getElementById("importQuery").value.trim() || "Louis Vuitton handbag";
+
+  btn.classList.add("importing");
+  btn.disabled = true;
+  status.textContent = "Importing...";
+
+  try {
+    const result = await fetch("/api/connectors/ebay/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, limit: 12 }),
+    }).then(r => r.json());
+
+    if (result.error) throw new Error(result.error);
+    status.textContent = `${result.fetched_count} fetched · ${result.imported_count} new · ${result.updated_count} updated`;
+    currentPage = 1;
+    await loadConnectorStatus();
+    await loadTable();
+  } catch (err) {
+    status.textContent = "Import failed";
+  } finally {
+    btn.classList.remove("importing");
+    btn.disabled = false;
+  }
 }
 
 async function loadTable() {
@@ -276,7 +344,10 @@ async function loadTable() {
 
   tbody.innerHTML = data.listings.map(l => `
     <tr>
-      <td><span class="mono" style="color:var(--text-muted);font-size:10px;">${l.listing_id}</span></td>
+      <td>
+        <span class="mono" style="color:var(--text-muted);font-size:10px;">${l.listing_id}</span>
+        <div style="margin-top:4px;">${sourceBadge(l)}</div>
+      </td>
       <td>
         <div style="font-size:12px;color:var(--text-primary);font-weight:500;">${l.maison}</div>
         <div class="mono" style="color:var(--text-muted);font-size:10px;">${l.product_name.length > 22 ? l.product_name.slice(0,20)+"…" : l.product_name}</div>
@@ -326,6 +397,7 @@ setInterval(updateClock, 60000);
 updateClock();
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await loadConnectorStatus();
   await loadPlatforms();
   loadTable();
 });

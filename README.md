@@ -21,10 +21,19 @@ Luxury maisons face a recurring grey market problem: unauthorized listings, regi
 - Scans 520 synthetic marketplace listings across resale platforms and regions.
 - Scores listing anomalies using an Isolation Forest model when `scikit-learn` is available, with a deterministic fallback for lightweight demos.
 - Calculates a composite distributor risk score from order pressure, price-gap exposure, compliance history, and allocation intensity.
+- Persists each scan in `scan_runs` and stores DIS snapshots in `dis_history` for portfolio-level risk trending.
+- Imports a small eBay Browse API listing batch when credentials are configured, with a fixture fallback for reliable demos.
 - Shows evidence trails for escalated listings so a reviewer can see why a flag exists.
 - Maps seller clusters with a network graph based on shared SKU, platform, and region signals.
 - Provides a price and allocation analytics page with regional gap charts, severity distribution, heatmap, and a What-If simulator.
 - Seeds a full demo database automatically on first run.
+
+## Recent Build Milestones
+
+- Added DIS score history tracking with `scan_runs` and `dis_history`, so every scan persists an auditable portfolio risk snapshot.
+- Replaced the dashboard trend mockup with saved DIS history from actual scan events.
+- Added a small eBay Browse API connector with OAuth live mode, fixture fallback, and `ingest_runs` audit records.
+- Added a Marketplace Monitor `eBay Import` workflow that imports or updates eBay-sourced listing rows without duplicating them.
 
 ## Prototype Screens
 
@@ -43,10 +52,13 @@ flowchart LR
     A[Synthetic LVMH Products] --> D[(SQLite Demo Database)]
     B[Marketplace Listings] --> D
     C[Distributor Profiles] --> D
+    N[eBay Browse API or Fixture] --> E
     D --> E[Flask API]
     E --> F[ML Scan Engine]
+    E --> O[Listing Ingest Runs]
     F --> G[Listing Risk Escalations]
     F --> H[Distributor Risk Scores]
+    F --> M[DIS Score History]
     E --> I[Dashboard UI]
     E --> J[Marketplace Monitor]
     E --> K[Distributor Risk Workspace]
@@ -62,6 +74,7 @@ flowchart LR
 - scikit-learn, optional deploy/runtime model path
 - Chart.js
 - D3.js
+- eBay Browse API connector with fixture fallback
 - HTML/CSS/JavaScript
 - Render-ready Gunicorn deployment
 
@@ -89,15 +102,26 @@ Optional advanced ML install:
 python -m pip install -r requirements-phase2.txt
 ```
 
+Optional eBay live connector:
+
+```powershell
+$env:EBAY_CLIENT_ID="your-ebay-client-id"
+$env:EBAY_CLIENT_SECRET="your-ebay-client-secret"
+$env:EBAY_MARKETPLACE_ID="EBAY_US"
+```
+
+Without those variables, the Marketplace Monitor uses the bundled eBay-style fixture so the import workflow still works locally and on Render.
+
 Free Render services spin down when idle and have an ephemeral filesystem. That is acceptable for this prototype because the app automatically reseeds synthetic demo data when the SQLite database is missing.
 
 ## Demo Script
 
 1. Open the dashboard and click `Run Scan`.
 2. Show the Diversion Intelligence Score, scan deltas, and listing evidence trails.
-3. Open Marketplace Monitor to show listing-level risk, confidence, seller, platform, and status.
-4. Open Distributor Risk to explain how partner risk is scored and translated into action.
-5. Open Price and Allocation to show regional price gaps and the What-If simulator.
+3. Open Marketplace Monitor and click `eBay Import` to show the external listing connector workflow.
+4. Show listing-level risk, confidence, seller, platform, status, and source badges.
+5. Open Distributor Risk to explain how partner risk is scored and translated into action.
+6. Open Price and Allocation to show regional price gaps and the What-If simulator.
 
 ## Project Structure
 
@@ -106,6 +130,9 @@ app.py                         Flask routes and REST API
 database.py                    SQLAlchemy models
 data_generator.py              Synthetic LVMH-style dataset generation
 ml_engine.py                   Listing anomaly and distributor risk scoring
+connectors/ebay_connector.py   eBay Browse API client and fixture fallback
+fixtures/ebay_luxury_listings.json
+                               Local eBay-style listings for credential-free demos
 templates/dashboard.html       Executive dashboard and scan workflow
 templates/listings.html        Marketplace monitoring table
 templates/distributors.html    Distributor risk workspace
@@ -119,10 +146,9 @@ requirements-phase2.txt        Optional advanced ML dependency
 
 ## Next Build Priorities
 
-- Persist scan history in `scan_runs` and `dis_history` tables.
-- Add a portfolio risk trend chart.
-- Add one real data connector, starting with a small eBay API proof of concept.
+- Expand the eBay connector into scheduled marketplace ingestion with more brands and search terms.
 - Add a constrained natural-language query interface over approved database filters.
+- Add role-based views for Brand Protection, Supply Chain, and Leadership.
 
 ## Important Note
 

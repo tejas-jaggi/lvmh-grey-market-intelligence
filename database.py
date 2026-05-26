@@ -95,6 +95,7 @@ class MarketplaceListing(db.Model):
     status = db.Column(db.String(20), default="Active")  # Active/Removed/Under Review
 
     def to_dict(self):
+        is_external = self.listing_id.startswith("EBAY-")
         return {
             "listing_id": self.listing_id,
             "platform": self.platform,
@@ -114,6 +115,8 @@ class MarketplaceListing(db.Model):
             "detection_timestamp": self.detection_timestamp.strftime("%Y-%m-%d %H:%M"),
             "region": self.region,
             "status": self.status,
+            "is_external": is_external,
+            "data_source": "eBay Browse" if is_external else "Synthetic demo",
         }
 
 
@@ -261,5 +264,38 @@ class DiversionScoreHistory(db.Model):
             },
             "total_listings": self.total_listings,
             "flagged_listings": self.flagged_listings,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+
+class IngestRun(db.Model):
+    __tablename__ = "ingest_runs"
+
+    run_id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source = db.Column(db.String(40), nullable=False)
+    mode = db.Column(db.String(20), default="fixture", nullable=False)
+    search_query = db.Column("query", db.String(160), nullable=False)
+    marketplace_id = db.Column(db.String(30), default="EBAY_US", nullable=False)
+    status = db.Column(db.String(20), default="completed", nullable=False)
+    fetched_count = db.Column(db.Integer, default=0)
+    imported_count = db.Column(db.Integer, default=0)
+    updated_count = db.Column(db.Integer, default=0)
+    flagged_count = db.Column(db.Integer, default=0)
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "run_id": self.run_id,
+            "source": self.source,
+            "mode": self.mode,
+            "query": self.search_query,
+            "marketplace_id": self.marketplace_id,
+            "status": self.status,
+            "fetched_count": self.fetched_count,
+            "imported_count": self.imported_count,
+            "updated_count": self.updated_count,
+            "flagged_count": self.flagged_count,
+            "error_message": self.error_message,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         }

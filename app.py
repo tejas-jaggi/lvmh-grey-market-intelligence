@@ -16,9 +16,11 @@ from database import (
     DiversionAlert,
     ScanRun,
     DiversionScoreHistory,
+    IngestRun,
 )
 from data_generator import seed_all
 from datetime import datetime
+import hashlib
 import os
 import time
 
@@ -154,6 +156,202 @@ def _history_from_snapshot(snapshot, scan_id=None):
         total_listings=snapshot["total_listings"],
         flagged_listings=snapshot["flagged_listings"],
     )
+
+
+COUNTRY_REGION_MAP = {
+    "US": "North America",
+    "CA": "North America",
+    "MX": "North America",
+    "GB": "Western Europe",
+    "UK": "Western Europe",
+    "FR": "Western Europe",
+    "DE": "Western Europe",
+    "IT": "Western Europe",
+    "ES": "Western Europe",
+    "CN": "Greater China",
+    "HK": "Greater China",
+    "TW": "Greater China",
+    "JP": "Japan & Korea",
+    "KR": "Japan & Korea",
+    "SG": "Southeast Asia",
+    "TH": "Southeast Asia",
+    "MY": "Southeast Asia",
+    "VN": "Southeast Asia",
+    "AE": "Middle East",
+    "SA": "Middle East",
+    "QA": "Middle East",
+    "BR": "Latin America",
+    "AR": "Latin America",
+    "CL": "Latin America",
+    "ZA": "Africa",
+    "NG": "Africa",
+    "IN": "South Asia",
+}
+
+CURRENCY_TO_USD = {
+    "USD": 1.0,
+    "EUR": 1.08,
+    "GBP": 1.27,
+    "CAD": 0.74,
+    "AUD": 0.66,
+    "CNY": 0.14,
+    "HKD": 0.13,
+    "JPY": 0.0067,
+}
+
+
+def _external_id(prefix, value, length=12):
+    digest = hashlib.sha1(str(value or prefix).encode("utf-8")).hexdigest()[:length].upper()
+    return f"{prefix}-{digest}"
+
+
+def _match_product_for_external_item(title, query):
+    haystack = f"{title or ''} {query or ''}".lower()
+    products = Product.query.all()
+    if not products:
+        return None
+
+    best_product = None
+    best_score = -1
+    for product in products:
+        score = 0
+        if product.sku.lower() in haystack:
+            score += 8
+        if product.maison.lower() in haystack:
+            score += 6
+        for word in product.product_name.lower().replace("-", " ").split():
+            if len(word) > 2 and word in haystack:
+                score += 2
+        if score > best_score:
+            best_product = product
+            best_score = score
+
+    return best_product if best_score > 0 else products[0]
+
+
+def _region_from_external_item(item):
+    country = (item.get("country") or "").upper()
+    if country in COUNTRY_REGION_MAP:
+        return COUNTRY_REGION_MAP[country]
+
+    marketplace = (item.get("marketplace_id") or "").upper()
+    if marketplace in ("EBAY_US", "EBAY_CA"):
+        return "North America"
+    if marketplace in ("EBAY_GB", "EBAY_DE", "EBAY_FR", "EBAY_IT", "EBAY_ES"):
+        return "Western Europe"
+    return "North America"
+
+
+def _score_external_listing(usd_price, msrp, item):
+    deviation_pct = round(((usd_price - msrp) / max(msrp, 1)) * 100, 1)
+    seller_score = item.get("seller_feedback_score") or 0
+    condition = (item.get("condition") or "").lower()
+
+    if deviation_pct <= -35:
+        risk_level = "Critical"
+        confidence = 0.88
+    elif deviation_pct <= -22:
+        risk_level = "High"
+        confidence = 0.74
+    elif deviation_pct <= -12:
+        risk_level = "Medium"
+        confidence = 0.56
+    else:
+        risk_level = "Low"
+        confidence = 0.22
+
+    if seller_score and seller_score < 750:
+        confidence += 0.06
+    if "new" in condition and deviation_pct <= -15:
+        confidence += 0.05
+    if "pre-owned" in condition or "used" in condition:
+        confidence -= 0.04
+
+    confidence = max(0.05, min(0.97, confidence))
+    is_flagged = risk_level != "Low"
+    flag_reason = None
+    if is_flagged:
+        flag_reason = f"eBay import: {abs(deviation_pct):.1f}% below MSRP benchmark"
+
+    return deviation_pct, risk_level, confidence, is_flagged, flag_reason
+
+
+def _build_external_listing(item, query):
+    product = _match_product_for_external_item(item.get("title"), query)
+    if not product:
+        return None
+
+    currency = (item.get("currency") or "USD").upper()
+    price = float(item["price_value"])
+    usd_price = price * CURRENCY_TO_USD.get(currency, 1.0)
+    deviation_pct, risk_level, confidence, is_flagged, flag_reason = _score_external_listing(
+        usd_price,
+        product.msrp_usd,
+        item,
+    )
+
+    seller_name = item.get("seller_username") or "unknown_seller"
+    return MarketplaceListing(
+        listing_id=_external_id("EBAY", item.get("source_item_id")),
+        platform="eBay",
+        seller_id=_external_id("ESLR", seller_name),
+        seller_name=seller_name[:80],
+        product_sku=product.sku,
+        listed_price=round(price, 2),
+        currency=currency,
+        msrp_equivalent=round(product.msrp_usd, 2),
+        price_deviation_pct=deviation_pct,
+        is_flagged=is_flagged,
+        flag_reason=flag_reason,
+        risk_level=risk_level,
+        confidence=confidence,
+        detection_timestamp=datetime.utcnow(),
+        region=_region_from_external_item(item),
+        status="Active",
+    )
+
+
+def _upsert_external_listings(items, query):
+    imported_count = 0
+    updated_count = 0
+    flagged_count = 0
+
+    for item in items:
+        listing = _build_external_listing(item, query)
+        if not listing:
+            continue
+
+        existing = MarketplaceListing.query.filter_by(listing_id=listing.listing_id).first()
+        if existing:
+            for field in (
+                "platform",
+                "seller_id",
+                "seller_name",
+                "product_sku",
+                "listed_price",
+                "currency",
+                "msrp_equivalent",
+                "price_deviation_pct",
+                "is_flagged",
+                "flag_reason",
+                "risk_level",
+                "confidence",
+                "detection_timestamp",
+                "region",
+                "status",
+            ):
+                setattr(existing, field, getattr(listing, field))
+            updated_count += 1
+            saved = existing
+        else:
+            db.session.add(listing)
+            imported_count += 1
+            saved = listing
+
+        if saved.is_flagged:
+            flagged_count += 1
+
+    return imported_count, updated_count, flagged_count
 
 
 def _build_driver_breakdown(distributor):
@@ -622,6 +820,80 @@ def recent_flagged():
         .all()
     )
     return jsonify([l.to_dict() for l in listings])
+
+
+@app.route("/api/connectors/ebay/status")
+def ebay_connector_status():
+    """Connector readiness and recent import runs without exposing secrets."""
+    from connectors.ebay_connector import EbayConnectorConfig
+
+    config = EbayConnectorConfig.from_env()
+    runs = (
+        IngestRun.query
+        .filter_by(source="ebay_browse")
+        .order_by(desc(IngestRun.created_at))
+        .limit(5)
+        .all()
+    )
+    return jsonify({
+        "source": "ebay_browse",
+        "configured": config.has_credentials,
+        "mode": "live" if config.has_credentials else "fixture",
+        "marketplace_id": config.marketplace_id,
+        "environment": config.environment,
+        "last_runs": [run.to_dict() for run in runs],
+    })
+
+
+@app.route("/api/connectors/ebay/import", methods=["POST"])
+def import_ebay_listings():
+    """Import a small eBay Browse result set into the marketplace listings table."""
+    from connectors.ebay_connector import DEFAULT_QUERY, EbayBrowseConnector
+
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or request.args.get("query") or DEFAULT_QUERY).strip()
+    limit = payload.get("limit") or request.args.get("limit", 12, type=int) or 12
+    limit = max(1, min(int(limit), 25))
+
+    connector = EbayBrowseConnector()
+    result = connector.search(query=query, limit=limit, fallback_to_fixture=True)
+
+    try:
+        imported_count, updated_count, flagged_count = _upsert_external_listings(
+            result["items"],
+            result["query"],
+        )
+        status = "fallback" if result["mode"] == "fixture_fallback" else "completed"
+        ingest_run = IngestRun(
+            source=result["source"],
+            mode=result["mode"],
+            search_query=result["query"],
+            marketplace_id=result["marketplace_id"],
+            status=status,
+            fetched_count=len(result["items"]),
+            imported_count=imported_count,
+            updated_count=updated_count,
+            flagged_count=flagged_count,
+            error_message=result.get("error"),
+        )
+        db.session.add(ingest_run)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return jsonify({
+        "status": status,
+        "mode": result["mode"],
+        "query": result["query"],
+        "marketplace_id": result["marketplace_id"],
+        "fetched_count": len(result["items"]),
+        "imported_count": imported_count,
+        "updated_count": updated_count,
+        "flagged_count": flagged_count,
+        "error_message": result.get("error"),
+        "run": ingest_run.to_dict(),
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1259,7 +1531,7 @@ def seller_network():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "version": "3.1.0-dis-history"})
+    return jsonify({"status": "ok", "version": "3.2.0-ebay-connector"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

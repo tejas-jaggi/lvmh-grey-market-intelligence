@@ -1,0 +1,125 @@
+{
+  "total": 12,
+  "itemSummaries": [
+    {
+      "itemId": "v1|fixture-ebay-0001|0",
+      "title": "Louis Vuitton Neverfull MM Monogram Tote Pre-Owned",
+      "price": { "value": "1280.00", "currency": "USD" },
+      "seller": { "username": "luxury_archive_nyc", "feedbackPercentage": "98.7", "feedbackScore": 1842 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0001",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "New York", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0002|0",
+      "title": "Louis Vuitton Speedy 30 Damier Ebene Handbag",
+      "price": { "value": "860.00", "currency": "USD" },
+      "seller": { "username": "global_style_resale", "feedbackPercentage": "96.4", "feedbackScore": 721 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0002",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Los Angeles", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0003|0",
+      "title": "Louis Vuitton Pochette Metis Reverse Monogram",
+      "price": { "value": "1740.00", "currency": "USD" },
+      "seller": { "username": "verified_lux_goods", "feedbackPercentage": "99.1", "feedbackScore": 3209 },
+      "condition": "New without tags",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0003",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Chicago", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0004|0",
+      "title": "Christian Dior Book Tote Oblique Canvas Large",
+      "price": { "value": "1925.00", "currency": "USD" },
+      "seller": { "username": "couture_cycle", "feedbackPercentage": "97.8", "feedbackScore": 1190 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0004",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Miami", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0005|0",
+      "title": "Dior Saddle Bag Blue Oblique With Strap",
+      "price": { "value": "2150.00", "currency": "USD" },
+      "seller": { "username": "atelier_resale", "feedbackPercentage": "98.1", "feedbackScore": 884 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0005",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Dallas", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0006|0",
+      "title": "Fendi Baguette Zucca Brown Shoulder Bag",
+      "price": { "value": "1185.00", "currency": "USD" },
+      "seller": { "username": "resale_room", "feedbackPercentage": "95.9", "feedbackScore": 463 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0006",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Seattle", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0007|0",
+      "title": "Celine Teen Triomphe Bag Black Calfskin",
+      "price": { "value": "2450.00", "currency": "USD" },
+      "seller": { "username": "premier_boutique_find", "feedbackPercentage": "99.3", "feedbackScore": 2501 },
+      "condition": "New without tags",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0007",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Boston", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0008|0",
+      "title": "Loewe Puzzle Bag Small Tan Leather",
+      "price": { "value": "1775.00", "currency": "USD" },
+      "seller": { "username": "quiet_luxury_store", "feedbackPercentage": "98.9", "feedbackScore": 1689 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0008",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "San Francisco", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0009|0",
+      "title": "Givenchy Antigona Soft Medium Black Leather",
+      "price": { "value": "790.00", "currency": "USD" },
+      "seller": { "username": "lux_warehouse_direct", "feedbackPercentage": "94.8", "feedbackScore": 309 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0009",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Atlanta", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0010|0",
+      "title": "Bulgari Serpenti Tubogas Watch Steel Gold",
+      "price": { "value": "4875.00", "currency": "USD" },
+      "seller": { "username": "watch_marketplace_us", "feedbackPercentage": "97.2", "feedbackScore": 640 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0010",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Las Vegas", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0011|0",
+      "title": "TAG Heuer Carrera Chronograph Automatic Watch",
+      "price": { "value": "1690.00", "currency": "USD" },
+      "seller": { "username": "chrono_outlet", "feedbackPercentage": "96.8", "feedbackScore": 932 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0011",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Phoenix", "country": "US" }
+    },
+    {
+      "itemId": "v1|fixture-ebay-0012|0",
+      "title": "Louis Vuitton Capucines BB Taurillon Leather",
+      "price": { "value": "3120.00", "currency": "USD" },
+      "seller": { "username": "rare_find_lux", "feedbackPercentage": "98.5", "feedbackScore": 1544 },
+      "condition": "Pre-Owned",
+      "itemWebUrl": "https://www.ebay.com/itm/fixture-ebay-0012",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/fixture/s-l225.jpg" },
+      "itemLocation": { "city": "Newark", "country": "US" }
+    }
+  ]
+}

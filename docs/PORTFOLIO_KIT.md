@@ -40,14 +40,14 @@ https://lvmh-grey-market-intelligence.onrender.com
 
 - Built and deployed an explainable AI prototype for luxury grey-market diversion monitoring using Flask, SQLAlchemy, SQLite, scikit-learn, Chart.js, and D3.
 - Designed a composite distributor risk scoring model using order pressure, price-gap exposure, compliance history, and allocation intensity to support channel governance decisions.
-- Implemented marketplace anomaly detection, evidence trails, seller cluster visualization, and allocation scenario modeling in a production-deployed web application.
+- Implemented marketplace anomaly detection, eBay listing ingestion, evidence trails, seller cluster visualization, and allocation scenario modeling in a production-deployed web application.
 
 ## LinkedIn Post Draft
 
 ```text
 I recently built and deployed an explainable AI prototype for grey-market diversion intelligence in luxury retail.
 
-The prototype combines marketplace monitoring, listing anomaly detection, distributor risk scoring, evidence trails, seller cluster detection, and allocation scenario modeling into one Flask application.
+The prototype combines marketplace monitoring, eBay listing ingestion, listing anomaly detection, distributor risk scoring, evidence trails, seller cluster detection, and allocation scenario modeling into one Flask application.
 
 The goal was to turn a consulting recommendation into a working product demo: not just slides, but an interactive system that shows how brand protection, supply chain, and leadership teams could act on the same intelligence layer.
 
@@ -76,4 +76,13 @@ portfolio risk trend chart
 last scan vs current scan comparison
 ```
 
-Next strongest addition: connect a small real-data source, starting with eBay listings, so the demo can show synthetic governance logic running against a real marketplace signal.
+Completed next feature:
+
+```text
+eBay Browse API connector
+fixture fallback for demos without API secrets
+ingest_runs audit table
+Marketplace Monitor import workflow
+```
+
+Next strongest addition: add scheduled connector runs and a constrained natural-language query layer over approved dashboard filters.

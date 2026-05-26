@@ -54,6 +54,17 @@ Start Command: gunicorn app:app --bind 0.0.0.0:$PORT
 Python: 3.12.7
 ```
 
+Optional eBay live connector environment variables:
+
+```text
+EBAY_CLIENT_ID
+EBAY_CLIENT_SECRET
+EBAY_MARKETPLACE_ID=EBAY_US
+EBAY_ENV=production
+```
+
+If the eBay variables are not set, the app keeps the Marketplace Monitor import workflow available through the bundled fixture dataset.
+
 ## 3. Smoke Test the Live App
 
 After Render finishes deployment, open the public URL and test:
@@ -68,6 +79,7 @@ https://lvmh-grey-market-intelligence.onrender.com
 ```
 
 Click `Run Scan` on the dashboard and confirm the scan panel updates.
+Open Marketplace Monitor, click `eBay Import`, and confirm the table refreshes with eBay-sourced rows. Without eBay credentials this should run in fixture mode.
 
 Current live URL:
 
@@ -80,7 +92,7 @@ https://lvmh-grey-market-intelligence.onrender.com
 Use this description:
 
 ```text
-AI-assisted grey market intelligence prototype for luxury brand protection. Built with Flask, SQLAlchemy, scikit-learn, Chart.js, and D3. Includes listing anomaly scoring, distributor risk scoring, evidence trails, seller network detection, and allocation scenario modeling.
+AI-assisted grey market intelligence prototype for luxury brand protection. Built with Flask, SQLAlchemy, scikit-learn, Chart.js, and D3. Includes listing anomaly scoring, distributor risk scoring, evidence trails, seller network detection, eBay listing ingestion, and allocation scenario modeling.
 ```
 
 Suggested LinkedIn/GitHub headline:
